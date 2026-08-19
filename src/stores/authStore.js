@@ -55,7 +55,8 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
 
     try {
-      user.value = await apiRequest("/auth/me");
+      // El perfil protegido vive en el módulo de usuarios del backend.
+      user.value = await apiRequest("/users/me");
       return user.value;
     } catch (error) {
       logout();
@@ -69,7 +70,7 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
 
     try {
-      const updatedUser = await apiRequest("/auth/me", {
+      const updatedUser = await apiRequest("/users/me", {
         method: "PATCH",
         body: JSON.stringify(profileData),
       });
