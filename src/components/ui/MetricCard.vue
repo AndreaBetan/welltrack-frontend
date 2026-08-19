@@ -1,5 +1,5 @@
 <script setup>
-import BaseCard from "@/components/BaseCard.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
 
 defineProps({
   label: { type: String, required: true },

@@ -1,0 +1,57 @@
+import {
+  Bike,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  CircleDot,
+  CirclePlus,
+  Clock3,
+  Dumbbell,
+  Flame,
+  Flower2,
+  Footprints,
+  Goal,
+  Mountain,
+  Music2,
+  Pencil,
+  PersonStanding,
+  SportShoe,
+  Trash2,
+  TriangleAlert,
+  Volleyball,
+  Waves,
+  X,
+} from "@lucide/vue";
+
+export const icons = {
+  actions: {
+    add: CirclePlus,
+    edit: Pencil,
+    delete: Trash2,
+    close: X,
+    next: ChevronRight,
+    previous: ChevronLeft,
+  },
+
+  common: {
+    clock: Clock3,
+    calories: Flame,
+    date: CalendarDays,
+    person: PersonStanding,
+    warning: TriangleAlert,
+  },
+
+  activities: {
+    walking: Footprints,
+    running: SportShoe,
+    cycling: Bike,
+    swimming: Waves,
+    strength: Dumbbell,
+    yoga: Flower2,
+    dance: Music2,
+    hiking: Mountain,
+    football: Goal,
+    basketball: Volleyball,
+    other: CircleDot,
+  },
+};
