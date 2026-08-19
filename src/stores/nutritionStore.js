@@ -1,39 +1,106 @@
+import { computed, ref } from "vue";
 import { defineStore } from "pinia";
-import { computed, ref, watch } from "vue";
-import { storageService } from "@/services/storageService";
+import { apiRequest } from "@/services/apiService";
 
-const STORAGE_KEY = "welltrack:nutrition";
-const today = () => new Date().toISOString().slice(0, 10);
+const localDate = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export const useNutritionStore = defineStore("nutrition", () => {
-  const entries = ref(storageService.get(STORAGE_KEY));
+  const entries = ref([]);
   const isLoading = ref(false);
 
-  const todayEntries = computed(() => entries.value.filter((entry) => entry.date === today()));
-  const totalCaloriesToday = computed(() =>
-    todayEntries.value.reduce((total, entry) => total + Number(entry.calories), 0),
-  );
-  const totalProteinToday = computed(() =>
-    todayEntries.value.reduce((total, entry) => total + Number(entry.protein), 0),
+  const todayEntries = computed(() =>
+    entries.value.filter(
+      (entry) => String(entry.log_date).slice(0, 10) === localDate(),
+    ),
   );
 
-  const addEntry = (entry) => {
+  const sumToday = (field) =>
+    todayEntries.value.reduce((total, entry) => total + Number(entry[field] || 0), 0);
+
+  const totalCaloriesToday = computed(() => Math.round(sumToday("calories") * 10) / 10);
+  const totalProteinToday = computed(() => Math.round(sumToday("protein") * 10) / 10);
+  const totalCarbsToday = computed(() => Math.round(sumToday("carbs") * 10) / 10);
+  const totalFatToday = computed(() => Math.round(sumToday("fat") * 10) / 10);
+
+  const loadEntries = async (filters = {}) => {
     isLoading.value = true;
-    entries.value = [
-      {
-        id: crypto.randomUUID(),
-        date: entry.date,
-        calories: Number(entry.calories),
-        protein: Number(entry.protein),
-        fat: Number(entry.fat),
-        carbs: Number(entry.carbs),
-      },
-      ...entries.value,
-    ];
-    isLoading.value = false;
+
+    try {
+      const params = new URLSearchParams();
+      if (filters.date) params.set("date", filters.date);
+
+      const query = params.toString();
+      entries.value = await apiRequest(`/nutrition${query ? `?${query}` : ""}`);
+      return entries.value;
+    } finally {
+      isLoading.value = false;
+    }
   };
 
-  watch(entries, (value) => storageService.set(STORAGE_KEY, value), { deep: true });
+  const addEntry = async (entryData) => {
+    isLoading.value = true;
 
-  return { entries, isLoading, totalCaloriesToday, totalProteinToday, addEntry };
+    try {
+      const entry = await apiRequest("/nutrition", {
+        method: "POST",
+        body: JSON.stringify(entryData),
+      });
+      entries.value.unshift(entry);
+      return entry;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const updateEntry = async (entryId, entryData) => {
+    isLoading.value = true;
+
+    try {
+      const updatedEntry = await apiRequest(`/nutrition/${entryId}`, {
+        method: "PATCH",
+        body: JSON.stringify(entryData),
+      });
+      const index = entries.value.findIndex((entry) => entry.id === entryId);
+      if (index !== -1) entries.value[index] = updatedEntry;
+      return updatedEntry;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const deleteEntry = async (entryId) => {
+    isLoading.value = true;
+
+    try {
+      await apiRequest(`/nutrition/${entryId}`, { method: "DELETE" });
+      entries.value = entries.value.filter((entry) => entry.id !== entryId);
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const clearEntries = () => {
+    entries.value = [];
+  };
+
+  return {
+    entries,
+    isLoading,
+    todayEntries,
+    totalCaloriesToday,
+    totalProteinToday,
+    totalCarbsToday,
+    totalFatToday,
+    loadEntries,
+    addEntry,
+    updateEntry,
+    deleteEntry,
+    clearEntries,
+  };
 });
