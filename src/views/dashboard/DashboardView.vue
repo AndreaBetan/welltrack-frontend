@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from "vue";
-import MetricCard from "@/components/MetricCard.vue";
-import PageHeader from "@/components/PageHeader.vue";
+import { computed, onMounted } from "vue";
+import MetricCard from "@/components/ui/MetricCard.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
 import { useActivityStore } from "@/stores/activityStore";
 import { useNutritionStore } from "@/stores/nutritionStore";
 import { useSleepStore } from "@/stores/sleepStore";
@@ -9,6 +9,18 @@ import { useSleepStore } from "@/stores/sleepStore";
 const nutritionStore = useNutritionStore();
 const activityStore = useActivityStore();
 const sleepStore = useSleepStore();
+
+const localDate = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// Tras recargar el navegador, el dashboard consulta los registros del día en
+// PostgreSQL; ya no depende de la antigua copia en localStorage.
+onMounted(() => nutritionStore.loadEntries({ date: localDate() }).catch(() => {}));
 
 const wellnessIndex = computed(() => {
   const nutritionScore = nutritionStore.totalCaloriesToday > 0 && nutritionStore.totalCaloriesToday <= 2400 ? 30 : 16;

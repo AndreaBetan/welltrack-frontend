@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from "vue";
-import BaseCard from "@/components/BaseCard.vue";
-import EmptyState from "@/components/EmptyState.vue";
-import PageHeader from "@/components/PageHeader.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
 import { useActivityStore } from "@/stores/activityStore";
 import { useNutritionStore } from "@/stores/nutritionStore";
 import { useSleepStore } from "@/stores/sleepStore";

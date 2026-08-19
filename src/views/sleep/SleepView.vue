@@ -1,11 +1,11 @@
 <script setup>
 import { reactive } from "vue";
-import BaseCard from "@/components/BaseCard.vue";
-import DataTable from "@/components/DataTable.vue";
-import EmptyState from "@/components/EmptyState.vue";
-import FormField from "@/components/FormField.vue";
-import LoadingState from "@/components/LoadingState.vue";
-import PageHeader from "@/components/PageHeader.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
+import DataTable from "@/components/data/DataTable.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import FormField from "@/components/forms/FormField.vue";
+import LoadingState from "@/components/ui/LoadingState.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
 import { useSleepStore } from "@/stores/sleepStore";
 import { useToastStore } from "@/stores/toastStore";
 
@@ -49,7 +49,12 @@ const handleSubmit = () => {
     <section class="grid gap-4">
       <h2 class="text-2xl font-bold">Historial</h2>
       <LoadingState v-if="sleepStore.isLoading" />
-      <DataTable v-else-if="sleepStore.entries.length" :columns="columns" :rows="sleepStore.entries" />
+      <DataTable
+        v-else-if="sleepStore.entries.length"
+        :columns="columns"
+        :rows="sleepStore.entries"
+        :max-rows="5"
+      />
       <EmptyState
         v-else
         title="Sin datos de descanso"
