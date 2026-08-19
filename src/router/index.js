@@ -1,13 +1,14 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-import LoginView from "@/modules/auth/LoginView.vue";
-import RegisterView from "@/modules/auth/RegisterView.vue";
-import ActivityView from "@/modules/activity/ActivityView.vue";
-import DashboardView from "@/modules/dashboard/DashboardView.vue";
-import NutritionView from "@/modules/nutrition/NutritionView.vue";
-import ProfileView from "@/modules/profile/ProfileView.vue";
-import RecommendationsView from "@/modules/recommendations/RecommendationsView.vue";
-import SleepView from "@/modules/sleep/SleepView.vue";
+import LoginView from "@/views/auth/LoginView.vue";
+import RegisterView from "@/views/auth/RegisterView.vue";
+import GoalsOnboardingView from "@/views/onboarding/GoalsOnboardingView.vue";
+import ActivityView from "@/views/activity/ActivityView.vue";
+import DashboardView from "@/views/dashboard/DashboardView.vue";
+import NutritionView from "@/views/nutrition/NutritionView.vue";
+import ProfileView from "@/views/profile/ProfileView.vue";
+import RecommendationsView from "@/views/recommendations/RecommendationsView.vue";
+import SleepView from "@/views/sleep/SleepView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -25,6 +26,12 @@ const router = createRouter({
       path: "/registro",
       name: "register",
       component: RegisterView,
+    },
+    {
+      path: "/configurar-objetivos",
+      name: "goals-onboarding",
+      component: GoalsOnboardingView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/dashboard",

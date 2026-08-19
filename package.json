@@ -12,6 +12,7 @@
     "lint:eslint": "eslint . --fix --cache"
   },
   "dependencies": {
+    "@lucide/vue": "^1.31.0",
     "@tailwindcss/vite": "^4.3.1",
     "pinia": "^3.0.4",
     "tailwindcss": "^4.3.1",
