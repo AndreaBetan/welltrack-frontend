@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
 import LoadingState from "@/components/ui/LoadingState.vue";
 import PageHeader from "@/components/ui/PageHeader.vue";
@@ -8,10 +8,28 @@ import { useToastStore } from "@/stores/toastStore";
 import { useGoalStore } from "@/stores/goalStore";
 import GoalsList from "@/components/goals/GoalsList.vue";
 import GoalsSetup from "@/components/goals/GoalsSetup.vue";
+import { icons } from "@/icons";
 
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 const goalStore = useGoalStore();
+const isEditingProfile = ref(false);
+
+const supportedGoalTypes = [
+  "daily_activity_minutes",
+  "nightly_sleep_hours",
+  "daily_calories",
+  "target_weight",
+];
+
+// Ocultamos el bloque cuando las cuatro categorías ya tienen una meta activa.
+// Una categoría completada o cancelada vuelve a quedar disponible.
+const hasAvailableGoalTypes = computed(() => {
+  const activeTypes = new Set(
+    goalStore.goals.filter((goal) => goal.status === "active").map((goal) => goal.goal_type),
+  );
+  return supportedGoalTypes.some((type) => !activeTypes.has(type));
+});
 
 // El perfil reutiliza exactamente la misma colección que el onboarding. Aquí
 // se carga una vez para alimentar tanto el listado como las tarjetas nuevas.
@@ -32,24 +50,37 @@ const form = reactive({
   weight: "",
 });
 
-watch(
-  () => authStore.user,
-  (user) => {
-    if (!user) {
-      return;
-    }
+const copyUserToForm = () => {
+  const user = authStore.user;
+  if (!user) return;
 
-    Object.assign(form, {
+  Object.assign(form, {
       name: user.name ?? "",
       email: user.email ?? "",
       gender: user.gender ?? "",
       birth_date: user.birth_date ? String(user.birth_date).slice(0, 10) : "",
       height: user.height ?? "",
       weight: user.weight ?? "",
-    });
-  },
+  });
+};
+
+watch(
+  () => authStore.user,
+  copyUserToForm,
   { immediate: true },
 );
+
+const genderLabels = {
+  female: "Mujer",
+  male: "Hombre",
+  non_binary: "No binario",
+  other: "Otro",
+};
+
+const cancelEditing = () => {
+  copyUserToForm();
+  isEditingProfile.value = false;
+};
 
 const handleSubmit = async () => {
   try {
@@ -61,6 +92,7 @@ const handleSubmit = async () => {
       weight: form.weight === "" ? null : Number(form.weight),
     });
 
+    isEditingProfile.value = false;
     toastStore.notify("Perfil actualizado correctamente");
   } catch (error) {
     toastStore.notify(error.message, "error");
@@ -78,8 +110,51 @@ const handleSubmit = async () => {
 
     <LoadingState v-if="authStore.isLoading && !authStore.user" />
 
-    <BaseCard v-else>
-      <form class="grid grid-cols-2 gap-5 max-[680px]:grid-cols-1" @submit.prevent="handleSubmit">
+    <BaseCard v-else class="p-5!">
+      <div class="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-extrabold">Datos personales</h2>
+          <p class="mt-1 text-sm text-[#573e33]/55">Información utilizada para personalizar tu experiencia.</p>
+        </div>
+        <button
+          v-if="!isEditingProfile"
+          type="button"
+          class="flex h-10 shrink-0 items-center gap-2 rounded-lg border border-[#b98a81]/30 px-4 text-sm font-bold transition hover:bg-[#f7f1ec]"
+          @click="isEditingProfile = true"
+        >
+          <component :is="icons.actions.edit" class="size-4" aria-hidden="true" />
+          Editar
+        </button>
+      </div>
+
+      <dl v-if="!isEditingProfile" class="grid grid-cols-3 gap-x-8 gap-y-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
+        <div>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Nombre</dt>
+          <dd class="mt-1 font-semibold">{{ form.name || "No indicado" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Correo electrónico</dt>
+          <dd class="mt-1 truncate font-semibold">{{ form.email || "No indicado" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Género</dt>
+          <dd class="mt-1 font-semibold">{{ genderLabels[form.gender] || "Prefiero no indicarlo" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Fecha de nacimiento</dt>
+          <dd class="mt-1 font-semibold">{{ form.birth_date || "No indicada" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Altura</dt>
+          <dd class="mt-1 font-semibold">{{ form.height ? `${form.height} cm` : "No indicada" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Peso</dt>
+          <dd class="mt-1 font-semibold">{{ form.weight ? `${form.weight} kg` : "No indicado" }}</dd>
+        </div>
+      </dl>
+
+      <form v-else class="grid grid-cols-2 gap-5 max-[680px]:grid-cols-1" @submit.prevent="handleSubmit">
         <label class="grid gap-2 text-sm font-semibold text-[#573e33]/75" for="profile-name">
           Nombre
           <input
@@ -155,36 +230,29 @@ const handleSubmit = async () => {
           />
         </label>
 
-        <button
-          type="submit"
-          :disabled="authStore.isLoading"
-          class="col-span-2 h-11 rounded-lg bg-[#573e33] px-5 font-bold text-white transition hover:bg-[#6d4d40] disabled:cursor-not-allowed disabled:opacity-60 max-[680px]:col-span-1"
-        >
-          {{ authStore.isLoading ? "Guardando..." : "Guardar cambios" }}
-        </button>
+        <div class="col-span-2 flex justify-end gap-3 max-[680px]:col-span-1">
+          <button
+            type="button"
+            :disabled="authStore.isLoading"
+            class="h-11 rounded-lg border border-[#b98a81]/35 px-5 font-bold transition hover:bg-[#f7f1ec] disabled:opacity-60"
+            @click="cancelEditing"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            :disabled="authStore.isLoading"
+            class="h-11 rounded-lg bg-[#573e33] px-5 font-bold text-white transition hover:bg-[#6d4d40] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {{ authStore.isLoading ? "Guardando..." : "Guardar cambios" }}
+          </button>
+        </div>
       </form>
     </BaseCard>
 
-    <section class="grid gap-4">
-      <div>
-        <h2 class="text-2xl font-bold">Mis objetivos</h2>
-        <p class="mt-2 text-[#573e33]/65">
-          Consulta tus metas activas, complétalas o crea otras nuevas.
-        </p>
-      </div>
-
+    <section id="objetivos" class="grid scroll-mt-6 gap-6">
       <GoalsList />
-    </section>
-
-    <section class="grid gap-4">
-      <div>
-        <h2 class="text-2xl font-bold">Añadir objetivos</h2>
-        <p class="mt-2 text-[#573e33]/65">
-          Las metas activas no se muestran de nuevo para evitar duplicados.
-        </p>
-      </div>
-
-      <GoalsSetup />
+      <GoalsSetup v-if="hasAvailableGoalTypes" />
     </section>
   </section>
 </template>

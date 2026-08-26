@@ -1,9 +1,12 @@
 <script setup>
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
 import LoadingState from "@/components/ui/LoadingState.vue";
-import { ConfirmModal } from "@/components/modals";
+import DataTable from "@/components/data/DataTable.vue";
+import MacroDistributionFields from "@/components/goals/MacroDistributionFields.vue";
+import { ConfirmModal, Modal } from "@/components/modals";
+import { icons } from "@/icons";
 import { useGoalStore } from "@/stores/goalStore";
 import { useToastStore } from "@/stores/toastStore";
 
@@ -12,6 +15,14 @@ const toastStore = useToastStore();
 const editingGoalId = ref(null);
 const pendingDeleteId = ref(null);
 const isDeleting = ref(false);
+const showHistory = ref(false);
+const useMacroDistribution = ref(false);
+const editingHadDistribution = ref(false);
+const macroDistribution = ref({
+  carbs_percentage: 50,
+  protein_percentage: 20,
+  fat_percentage: 30,
+});
 
 const editForm = reactive({
   goal_type: "",
@@ -41,9 +52,50 @@ const unitLabels = {
   target_weight: "kg",
 };
 
-const normalizeDate = (date) => String(date).slice(0, 10);
+const goalStyles = {
+  daily_calories: {
+    icon: icons.goals.nutrition,
+    accent: "border-l-[#e9a595]",
+    iconClass: "bg-[#fce9e4] text-[#b56f61]",
+  },
+  daily_activity_minutes: {
+    icon: icons.goals.activity,
+    accent: "border-l-[#8fd1a1]",
+    iconClass: "bg-emerald-50 text-emerald-700",
+  },
+  nightly_sleep_hours: {
+    icon: icons.goals.sleep,
+    accent: "border-l-[#c2a6ef]",
+    iconClass: "bg-purple-50 text-purple-700",
+  },
+  target_weight: {
+    icon: icons.goals.weight,
+    accent: "border-l-[#f0bd78]",
+    iconClass: "bg-orange-50 text-orange-600",
+  },
+};
 
-const startEditing = (goal) => {
+const activeGoals = computed(() => goalStore.goals.filter((goal) => goal.status === "active"));
+const historicalGoals = computed(() =>
+  goalStore.goals
+    .filter((goal) => ["completed", "cancelled"].includes(goal.status))
+    .sort((first, second) => normalizeDate(second.end_date).localeCompare(normalizeDate(first.end_date))),
+);
+
+const historyColumns = [
+  { key: "goal_type", label: "Objetivo" },
+  { key: "target_value", label: "Meta" },
+  { key: "status", label: "Estado" },
+  { key: "end_date", label: "Fecha final" },
+];
+
+const normalizeDate = (date) => String(date).slice(0, 10);
+const formatDate = (date) =>
+  new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" })
+    .format(new Date(`${normalizeDate(date)}T00:00:00`))
+    .replace(" de ", " ");
+
+const startEditing = async (goal) => {
   // Se copia la tarjeta al formulario para no modificar el store antes de que
   // el backend confirme el PATCH.
   editingGoalId.value = goal.id;
@@ -54,6 +106,31 @@ const startEditing = (goal) => {
     end_date: normalizeDate(goal.end_date),
     status: goal.status,
   });
+
+  useMacroDistribution.value = false;
+  editingHadDistribution.value = false;
+  macroDistribution.value = {
+    carbs_percentage: 50,
+    protein_percentage: 20,
+    fat_percentage: 30,
+  };
+
+  if (goal.goal_type === "daily_calories") {
+    try {
+      const distribution = await goalStore.loadNutritionDistribution(goal.id);
+      if (distribution) {
+        macroDistribution.value = {
+          carbs_percentage: Number(distribution.carbs_percentage),
+          protein_percentage: Number(distribution.protein_percentage),
+          fat_percentage: Number(distribution.fat_percentage),
+        };
+        useMacroDistribution.value = true;
+        editingHadDistribution.value = true;
+      }
+    } catch (error) {
+      toastStore.notify(error.message, "error");
+    }
+  }
 };
 
 const cancelEditing = () => {
@@ -80,6 +157,19 @@ const saveGoal = async (goalId) => {
     return;
   }
 
+  const distributionTotal = Object.values(macroDistribution.value).reduce(
+    (sum, percentage) => sum + Number(percentage || 0),
+    0,
+  );
+  if (
+    editForm.goal_type === "daily_calories" &&
+    useMacroDistribution.value &&
+    Math.abs(distributionTotal - 100) > 0.001
+  ) {
+    toastStore.notify("La distribución de macronutrientes debe sumar 100%", "error");
+    return;
+  }
+
   try {
     await goalStore.updateGoal(goalId, {
       goal_type: editForm.goal_type,
@@ -88,6 +178,11 @@ const saveGoal = async (goalId) => {
       end_date: editForm.end_date,
       status: editForm.status,
     });
+    if (editForm.goal_type === "daily_calories" && useMacroDistribution.value) {
+      await goalStore.saveNutritionDistribution(goalId, macroDistribution.value);
+    } else if (editingHadDistribution.value) {
+      await goalStore.deleteNutritionDistribution(goalId);
+    }
     editingGoalId.value = null;
     toastStore.notify("Objetivo actualizado");
   } catch (error) {
@@ -130,146 +225,238 @@ const removeGoal = async () => {
 </script>
 
 <template>
+  <div class="mb-4 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <span class="grid size-12 place-items-center rounded-full bg-[#fceee8] text-[#8d5d50]"
+        ><component :is="icons.goals.target" class="size-6"
+      /></span>
+      <div>
+        <h2 class="text-2xl font-extrabold">Mis objetivos</h2>
+        <p class="mt-1 text-sm text-[#573e33]/60">
+          Consulta tus metas activas, complétalas o crea otras nuevas.
+        </p>
+      </div>
+    </div>
+    <button
+      v-if="goalStore.goals.some((goal) => goal.status !== 'active')"
+      type="button"
+      class="shrink-0 text-sm font-bold hover:text-[#a46f62]"
+      @click="showHistory = !showHistory"
+    >
+      {{ showHistory ? "Ver activos" : "Ver historial" }} ›
+    </button>
+  </div>
+
   <LoadingState v-if="goalStore.isLoading && !goalStore.goals.length" />
+  <DataTable
+    v-else-if="showHistory && historicalGoals.length"
+    :columns="historyColumns"
+    :rows="historicalGoals"
+    :max-rows="3"
+    min-width="680px"
+  >
+    <template #cell-goal_type="{ row }">
+      <div class="flex items-center gap-3 font-bold">
+        <span
+          class="grid size-9 shrink-0 place-items-center rounded-lg"
+          :class="goalStyles[row.goal_type]?.iconClass"
+        >
+          <component
+            :is="goalStyles[row.goal_type]?.icon ?? icons.goals.target"
+            class="size-5"
+            aria-hidden="true"
+          />
+        </span>
+        {{ goalLabels[row.goal_type] ?? row.goal_type }}
+      </div>
+    </template>
 
-  <div v-else-if="goalStore.goals.length" class="grid gap-4">
-    <BaseCard v-for="goal in goalStore.goals" :key="goal.id">
-      <form
-        v-if="editingGoalId === goal.id"
-        class="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1"
-        @submit.prevent="saveGoal(goal.id)"
+    <template #cell-target_value="{ row }">
+      <strong>
+        {{ Number(row.target_value).toFixed(2) }} {{ unitLabels[row.goal_type] ?? "" }}
+      </strong>
+    </template>
+
+    <template #cell-status="{ row }">
+      <span
+        class="inline-flex rounded-full px-3 py-1 text-xs font-extrabold"
+        :class="
+          row.status === 'completed'
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-stone-100 text-stone-600'
+        "
       >
-        <label class="grid gap-2 text-sm font-semibold">
-          Tipo de objetivo
-          <select
-            v-model="editForm.goal_type"
-            required
-            class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
+        {{ statusLabels[row.status] ?? row.status }}
+      </span>
+    </template>
+
+    <template #cell-end_date="{ value }">
+      <span class="inline-flex items-center gap-2 whitespace-nowrap">
+        <component :is="icons.common.date" class="size-4" aria-hidden="true" />
+        {{ formatDate(value) }}
+      </span>
+    </template>
+  </DataTable>
+
+  <div
+    v-else-if="!showHistory && activeGoals.length"
+    class="grid gap-4 max-[760px]:grid-cols-1"
+    :class="
+      activeGoals.length === 3
+        ? 'grid-cols-3 max-[1200px]:grid-cols-2'
+        : activeGoals.length >= 2
+          ? 'grid-cols-2'
+          : 'grid-cols-1'
+    "
+  >
+    <BaseCard
+      v-for="goal in activeGoals"
+      :key="goal.id"
+      class="border-l-2 `p-4!`"
+      :class="goalStyles[goal.goal_type]?.accent"
+    >
+      <div class="flex gap-4">
+        <span
+          class="grid size-12 shrink-0 place-items-center rounded-xl"
+          :class="goalStyles[goal.goal_type]?.iconClass"
+          ><component :is="goalStyles[goal.goal_type]?.icon ?? icons.goals.target" class="size-6"
+        /></span>
+        <div class="min-w-0 flex-1">
+          <span
+            class="inline-flex rounded-full px-3 py-1 text-[0.68rem] font-extrabold uppercase tracking-wide"
+            :class="
+              goal.status === 'active'
+                ? 'bg-emerald-50 text-emerald-700'
+                : goal.status === 'completed'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'bg-stone-100 text-stone-600'
+            "
+            >{{ statusLabels[goal.status] ?? goal.status }}</span
           >
-            <option value="daily_calories">Calorías diarias</option>
-            <option value="daily_activity_minutes">Actividad diaria</option>
-            <option value="nightly_sleep_hours">Horas de sueño</option>
-            <option value="target_weight">Peso objetivo</option>
-          </select>
-        </label>
-
-        <label class="grid gap-2 text-sm font-semibold">
-          Valor objetivo
-          <input
-            v-model="editForm.target_value"
-            type="number"
-            min="0.1"
-            step="0.1"
-            required
-            class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
-          />
-        </label>
-
-        <label class="grid gap-2 text-sm font-semibold">
-          Fecha de inicio
-          <input
-            v-model="editForm.start_date"
-            type="date"
-            required
-            class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
-          />
-        </label>
-
-        <label class="grid gap-2 text-sm font-semibold">
-          Fecha de finalización
-          <input
-            v-model="editForm.end_date"
-            type="date"
-            :min="editForm.start_date"
-            required
-            class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
-          />
-        </label>
-
-        <label class="grid gap-2 text-sm font-semibold">
-          Estado
-          <select
-            v-model="editForm.status"
-            required
-            class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
+          <h3 class="mt-1.5 font-bold">{{ goalLabels[goal.goal_type] ?? goal.goal_type }}</h3>
+          <strong class="mt-0.5 block text-lg"
+            >{{ Number(goal.target_value).toFixed(2) }}
+            {{ unitLabels[goal.goal_type] ?? "" }}</strong
           >
-            <option value="active">Activo</option>
-            <option value="completed">Completado</option>
-            <option value="cancelled">Cancelado</option>
-          </select>
-        </label>
-
-        <div class="flex items-end gap-2 max-[640px]:flex-col max-[640px]:items-stretch">
-          <button
-            type="submit"
-            :disabled="goalStore.isLoading"
-            class="h-11 flex-1 rounded-lg bg-[#573e33] px-4 font-bold text-white disabled:opacity-50"
-          >
-            {{ goalStore.isLoading ? "Guardando..." : "Guardar cambios" }}
-          </button>
-          <button
-            type="button"
-            :disabled="goalStore.isLoading"
-            class="h-11 rounded-lg border border-[#b98a81]/35 px-4 font-bold"
-            @click="cancelEditing"
-          >
-            Cancelar
-          </button>
-        </div>
-      </form>
-
-      <div v-else class="flex items-start justify-between gap-4 max-[640px]:flex-col">
-        <div>
-          <span class="text-xs font-extrabold uppercase tracking-[0.1em] text-[#b98a81]">
-            {{ statusLabels[goal.status] ?? goal.status }}
-          </span>
-          <h3 class="mt-1 text-xl font-bold">
-            {{ goalLabels[goal.goal_type] ?? goal.goal_type }}
-          </h3>
-          <p class="mt-2 font-semibold">
-            {{ goal.target_value }} {{ unitLabels[goal.goal_type] ?? "" }}
-          </p>
-          <p class="mt-1 text-sm text-[#573e33]/65">
-            {{ normalizeDate(goal.start_date) }} — {{ normalizeDate(goal.end_date) }}
+          <p class="mt-1.5 flex items-center gap-2 text-xs text-[#573e33]/55">
+            <component :is="icons.common.date" class="size-4" />{{ formatDate(goal.start_date) }}
+            <span>—</span> {{ formatDate(goal.end_date) }}
           </p>
         </div>
-
-        <div class="flex flex-wrap gap-2 max-[640px]:w-full">
-          <button
-            type="button"
-            :disabled="goalStore.isLoading"
-            class="rounded-lg border border-[#b98a81]/35 px-4 py-2 text-sm font-bold disabled:opacity-50 max-[420px]:flex-1"
-            @click="startEditing(goal)"
-          >
-            Editar
-          </button>
-          <button
-            v-if="goal.status === 'active'"
-            type="button"
-            :disabled="goalStore.isLoading"
-            class="rounded-lg bg-[#573e33] px-4 py-2 text-sm font-bold text-white disabled:opacity-50 max-[420px]:flex-1"
-            @click="completeGoal(goal)"
-          >
-            Completar
-          </button>
-          <button
-            type="button"
-            :disabled="goalStore.isLoading"
-            class="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 disabled:opacity-50 max-[420px]:w-full"
-            @click="pendingDeleteId = goal.id"
-          >
-            Eliminar
-          </button>
-        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-3 gap-2 max-[480px]:grid-cols-1">
+        <button
+          type="button"
+          class="flex h-9 items-center justify-center gap-2 rounded-lg border border-[#b98a81]/30 text-xs font-bold hover:bg-[#f7f1ec]"
+          @click="startEditing(goal)"
+        >
+          <component :is="icons.actions.edit" class="size-4" />Editar
+        </button>
+        <button
+          v-if="goal.status === 'active'"
+          type="button"
+          class="flex h-9 items-center justify-center gap-2 rounded-lg border border-[#b98a81]/30 text-xs font-bold hover:bg-emerald-50"
+          @click="completeGoal(goal)"
+        >
+          <component :is="icons.actions.complete" class="size-4" />Completar
+        </button>
+        <button
+          type="button"
+          class="flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 text-xs font-bold text-red-600 hover:bg-red-50"
+          @click="pendingDeleteId = goal.id"
+        >
+          <component :is="icons.actions.delete" class="size-4" />Eliminar
+        </button>
       </div>
     </BaseCard>
   </div>
-
   <EmptyState
     v-else
-    title="Todavía no tienes objetivos"
-    description="Selecciona una o varias tarjetas para personalizar tu seguimiento."
+    :title="
+      showHistory ? 'No hay objetivos en el historial' : 'Todavía no tienes objetivos activos'
+    "
+    description="Crea un objetivo para personalizar tu seguimiento."
   />
+
+  <Modal
+    :open="Boolean(editingGoalId)"
+    title="Editar objetivo"
+    :loading="goalStore.isLoading"
+    @update:open="cancelEditing"
+  >
+    <form
+      class="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1"
+      @submit.prevent="saveGoal(editingGoalId)"
+    >
+      <label class="grid gap-2 text-sm font-semibold"
+        >Tipo de objetivo<select
+          v-model="editForm.goal_type"
+          class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3"
+        >
+          <option v-for="(label, type) in goalLabels" :key="type" :value="type">{{ label }}</option>
+        </select></label
+      >
+      <label class="grid gap-2 text-sm font-semibold"
+        >Valor objetivo<input
+          v-model="editForm.target_value"
+          type="number"
+          min="0.1"
+          step="0.1"
+          required
+          class="h-11 rounded-lg border border-[#b98a81]/35 px-3"
+      /></label>
+      <label class="grid gap-2 text-sm font-semibold"
+        >Fecha de inicio<input
+          v-model="editForm.start_date"
+          type="date"
+          required
+          class="h-11 rounded-lg border border-[#b98a81]/35 px-3"
+      /></label>
+      <label class="grid gap-2 text-sm font-semibold"
+        >Fecha final<input
+          v-model="editForm.end_date"
+          type="date"
+          :min="editForm.start_date"
+          required
+          class="h-11 rounded-lg border border-[#b98a81]/35 px-3"
+      /></label>
+      <label class="grid gap-2 text-sm font-semibold"
+        >Estado<select
+          v-model="editForm.status"
+          class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3"
+        >
+          <option v-for="(label, status) in statusLabels" :key="status" :value="status">
+            {{ label }}
+          </option>
+        </select></label
+      >
+      <div
+        v-if="editForm.goal_type === 'daily_calories'"
+        class="col-span-2 grid gap-3 max-[640px]:col-span-1"
+      >
+        <label class="flex cursor-pointer items-center gap-3 text-sm font-bold">
+          <input v-model="useMacroDistribution" type="checkbox" class="size-4 accent-[#573e33]" />
+          Distribuir el objetivo calórico entre macronutrientes
+        </label>
+        <MacroDistributionFields
+          v-if="useMacroDistribution"
+          v-model="macroDistribution"
+          :calories="editForm.target_value"
+        />
+      </div>
+      <div class="col-span-2 flex justify-end gap-3 max-[640px]:col-span-1">
+        <button
+          type="button"
+          class="h-11 rounded-lg border border-[#b98a81]/35 px-5 font-bold"
+          @click="cancelEditing"
+        >
+          Cancelar</button
+        ><button type="submit" class="h-11 rounded-lg bg-[#573e33] px-5 font-bold text-white">
+          {{ goalStore.isLoading ? "Guardando..." : "Guardar cambios" }}
+        </button>
+      </div>
+    </form>
+  </Modal>
 
   <ConfirmModal
     :open="Boolean(pendingDeleteId)"

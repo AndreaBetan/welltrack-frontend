@@ -1,6 +1,7 @@
 <script setup>
-import { computed, reactive } from "vue";
-import BaseCard from "@/components/ui/BaseCard.vue";
+import { computed, reactive, ref } from "vue";
+import MacroDistributionFields from "@/components/goals/MacroDistributionFields.vue";
+import { icons } from "@/icons";
 import { useGoalStore } from "@/stores/goalStore";
 import { useToastStore } from "@/stores/toastStore";
 
@@ -11,6 +12,11 @@ const props = defineProps({
 const emit = defineEmits(["completed"]);
 const goalStore = useGoalStore();
 const toastStore = useToastStore();
+const macroDistribution = ref({
+  carbs_percentage: 50,
+  protein_percentage: 20,
+  fat_percentage: 30,
+});
 
 const formatLocalDate = (date) => {
   const year = date.getFullYear();
@@ -32,6 +38,8 @@ const options = reactive([
     description: "Minutos de actividad física que quieres completar cada día.",
     unit: "minutos",
     value: 30,
+    icon: icons.goals.activity,
+    iconClass: "bg-emerald-50 text-emerald-700",
     selected: false,
   },
   {
@@ -40,6 +48,8 @@ const options = reactive([
     description: "Horas que quieres dormir cada noche.",
     unit: "horas",
     value: 8,
+    icon: icons.goals.sleep,
+    iconClass: "bg-purple-50 text-purple-700",
     selected: false,
   },
   {
@@ -48,6 +58,8 @@ const options = reactive([
     description: "Referencia personal de consumo energético diario.",
     unit: "kcal",
     value: 2000,
+    icon: icons.goals.nutrition,
+    iconClass: "bg-[#fce9e4] text-[#b56f61]",
     selected: false,
   },
   {
@@ -56,6 +68,8 @@ const options = reactive([
     description: "Peso que quieres alcanzar durante este periodo.",
     unit: "kg",
     value: 65,
+    icon: icons.goals.weight,
+    iconClass: "bg-orange-50 text-orange-600",
     selected: false,
   },
 ]);
@@ -68,9 +82,7 @@ const dates = reactive({
 const activeGoalTypes = computed(
   () =>
     new Set(
-      goalStore.goals
-        .filter((goal) => goal.status === "active")
-        .map((goal) => goal.goal_type),
+      goalStore.goals.filter((goal) => goal.status === "active").map((goal) => goal.goal_type),
     ),
 );
 
@@ -79,8 +91,9 @@ const availableOptions = computed(() =>
   options.filter((option) => !activeGoalTypes.value.has(option.type)),
 );
 
-const selectedOptions = computed(() =>
-  availableOptions.value.filter((option) => option.selected),
+const selectedOptions = computed(() => availableOptions.value.filter((option) => option.selected));
+const selectedCalorieOption = computed(() =>
+  selectedOptions.value.find((option) => option.type === "daily_calories"),
 );
 
 const toggleOption = (option) => {
@@ -98,6 +111,15 @@ const handleSubmit = async () => {
     return;
   }
 
+  const distributionTotal = Object.values(macroDistribution.value).reduce(
+    (sum, percentage) => sum + Number(percentage || 0),
+    0,
+  );
+  if (selectedCalorieOption.value && Math.abs(distributionTotal - 100) > 0.001) {
+    toastStore.notify("La distribución de macronutrientes debe sumar 100%", "error");
+    return;
+  }
+
   const payload = selectedOptions.value.map((option) => ({
     goal_type: option.type,
     target_value: Number(option.value),
@@ -107,7 +129,11 @@ const handleSubmit = async () => {
   }));
 
   try {
-    await goalStore.createGoals(payload);
+    const createdGoals = await goalStore.createGoals(payload);
+    const calorieGoal = createdGoals.find((goal) => goal.goal_type === "daily_calories");
+    if (calorieGoal) {
+      await goalStore.saveNutritionDistribution(calorieGoal.id, macroDistribution.value);
+    }
     options.forEach((option) => {
       option.selected = false;
     });
@@ -120,11 +146,37 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <BaseCard>
-    <form class="grid gap-6" @submit.prevent="handleSubmit">
+  <section
+    class="rounded-2xl border border-dashed border-[#d9a99e]/60 bg-[#fffaf7] p-6 max-[520px]:p-4"
+  >
+    <form
+      class="grid gap-5 min-[1100px]:grid-cols-[260px_minmax(0,1fr)] min-[1100px]:items-start"
+      @submit.prevent="handleSubmit"
+    >
+      <div class="min-[1100px]:pt-1">
+        <h2 class="text-2xl font-extrabold">Crear nuevo objetivo</h2>
+        <p class="mt-3 text-sm text-[#573e33]/60">
+          Elige un tipo de objetivo y define tu meta para mantener el foco.
+        </p>
+        <button
+          v-if="availableOptions.length"
+          type="submit"
+          :disabled="goalStore.isLoading || !selectedOptions.length"
+          class="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#573e33] px-5 font-bold text-white transition hover:bg-[#6d4d40] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <component :is="icons.actions.add" class="size-4" />
+          {{
+            goalStore.isLoading
+              ? "Guardando..."
+              : props.onboarding
+                ? "Guardar y continuar"
+                : "Crear objetivo"
+          }}
+        </button>
+      </div>
       <div
         v-if="availableOptions.length"
-        class="grid grid-cols-2 gap-4 max-[720px]:grid-cols-1"
+        class="flex flex-wrap gap-3 min-[1100px]:flex-nowrap min-[1100px]:justify-end"
       >
         <article
           v-for="option in availableOptions"
@@ -132,7 +184,7 @@ const handleSubmit = async () => {
           role="checkbox"
           tabindex="0"
           :aria-checked="option.selected"
-          class="cursor-pointer rounded-xl border-2 p-5 transition max-[420px]:p-4"
+          class="min-w-0 flex-1 basis-40 cursor-pointer rounded-xl border-2 bg-white p-4 text-center transition shadow-[0_8px_24px_rgba(87,62,51,0.04)] min-[1100px]:max-w-52 max-[620px]:basis-full"
           :class="
             option.selected
               ? 'border-[#573e33] bg-[#f7f1ec]'
@@ -142,49 +194,60 @@ const handleSubmit = async () => {
           @keydown.enter.prevent="toggleOption(option)"
           @keydown.space.prevent="toggleOption(option)"
         >
-          <div class="flex items-start gap-3">
-            <input
-              v-model="option.selected"
-              type="checkbox"
-              class="mt-1 accent-[#573e33]"
-              @click.stop
-            />
-
-            <div class="min-w-0 flex-1">
-              <h3 class="text-xl font-bold">{{ option.title }}</h3>
-              <p class="mt-2 text-sm leading-relaxed text-[#573e33]/65">
+          <div class="grid justify-items-center gap-2">
+            <span class="grid size-11 place-items-center rounded-full" :class="option.iconClass"
+              ><component :is="option.icon" class="size-5"
+            /></span>
+            <div class="min-w-0 w-full">
+              <h3 class="font-bold">{{ option.title }}</h3>
+              <p
+                v-if="!(option.type === 'daily_calories' && option.selected)"
+                class="mt-1.5 text-xs leading-5 text-[#573e33]/65"
+              >
                 {{ option.description }}
               </p>
 
               <label
                 v-if="option.selected"
-                class="mt-4 grid gap-2 text-sm font-semibold"
+                class="mt-4 grid gap-2 text-left text-sm font-semibold"
                 @click.stop
               >
                 Mi objetivo
-                <div class="flex items-center gap-2 max-[420px]:items-end">
+                <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                   <input
                     v-model="option.value"
                     type="number"
                     min="0.1"
                     step="0.1"
                     required
-                    class="h-11 min-w-0 flex-1 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
+                    class="h-10 w-full min-w-0 max-w-full rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
                     @click.stop
                   />
-                  <span class="shrink-0 pb-3">{{ option.unit }}</span>
+                  <span class="shrink-0 text-xs">{{ option.unit }}</span>
                 </div>
               </label>
+
+              <MacroDistributionFields
+                v-if="option.type === 'daily_calories' && option.selected"
+                v-model="macroDistribution"
+                :calories="option.value"
+                compact
+                class="mt-4"
+                @click.stop
+              />
             </div>
           </div>
         </article>
       </div>
 
-      <p v-else class="text-sm text-[#573e33]/65">
+      <p v-else class="text-sm text-[#573e33]/65 min-[1100px]:col-start-2">
         Ya tienes un objetivo activo de cada categoría disponible.
       </p>
 
-      <div v-if="availableOptions.length" class="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1">
+      <div
+        v-if="selectedOptions.length"
+        class="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1 min-[1100px]:col-start-2"
+      >
         <label class="grid gap-2 text-sm font-semibold">
           Fecha de inicio
           <input
@@ -207,20 +270,6 @@ const handleSubmit = async () => {
         </label>
       </div>
 
-      <button
-        v-if="availableOptions.length"
-        type="submit"
-        :disabled="goalStore.isLoading || !selectedOptions.length"
-        class="h-12 rounded-lg bg-[#573e33] px-6 font-bold text-white transition hover:bg-[#6d4d40] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {{
-          goalStore.isLoading
-            ? "Guardando..."
-            : props.onboarding
-              ? "Guardar y continuar"
-              : "Guardar objetivos"
-        }}
-      </button>
     </form>
-  </BaseCard>
+  </section>
 </template>

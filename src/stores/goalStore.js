@@ -4,6 +4,7 @@ import { apiRequest } from "@/services/apiService";
 
 export const useGoalStore = defineStore("goals", () => {
   const goals = ref([]);
+  const nutritionDistributions = ref({});
   const isLoading = ref(false);
 
   const loadGoals = async () => {
@@ -88,23 +89,70 @@ export const useGoalStore = defineStore("goals", () => {
       });
 
       goals.value = goals.value.filter((goal) => goal.id !== goalId);
+      delete nutritionDistributions.value[goalId];
     } finally {
       isLoading.value = false;
     }
   };
 
+  const loadNutritionDistribution = async (goalId) => {
+    try {
+      const distribution = await apiRequest(`/goals/${goalId}/nutrition-distribution`);
+      nutritionDistributions.value[goalId] = distribution;
+      return distribution;
+    } catch (error) {
+      // No tener reparto es un estado válido: el objetivo puede guardar solo
+      // calorías y permitir que el usuario lo configure después.
+      if (error.status === 404) {
+        delete nutritionDistributions.value[goalId];
+        return null;
+      }
+      throw error;
+    }
+  };
+
+  const loadNutritionDistributions = async () => {
+    const calorieGoals = goals.value.filter((goal) => goal.goal_type === "daily_calories");
+    await Promise.all(calorieGoals.map((goal) => loadNutritionDistribution(goal.id)));
+    return nutritionDistributions.value;
+  };
+
+  const saveNutritionDistribution = async (goalId, distributionData) => {
+    const distribution = await apiRequest(`/goals/${goalId}/nutrition-distribution`, {
+      method: "PUT",
+      body: JSON.stringify(distributionData),
+    });
+    nutritionDistributions.value[goalId] = distribution;
+    return distribution;
+  };
+
+  const deleteNutritionDistribution = async (goalId) => {
+    try {
+      await apiRequest(`/goals/${goalId}/nutrition-distribution`, { method: "DELETE" });
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
+    delete nutritionDistributions.value[goalId];
+  };
+
   const clearGoals = () => {
     goals.value = [];
+    nutritionDistributions.value = {};
   };
 
   return {
     goals,
+    nutritionDistributions,
     isLoading,
     loadGoals,
     createGoal,
     createGoals,
     updateGoal,
     deleteGoal,
+    loadNutritionDistribution,
+    loadNutritionDistributions,
+    saveNutritionDistribution,
+    deleteNutritionDistribution,
     clearGoals,
   };
 });
