@@ -135,6 +135,8 @@ onMounted(async () => {
       />
     </BaseCard>
 
+    <ActivitySummary :summary="summary" />
+
     <ActivityHistory
       :entries="activityStore.entries"
       :activities-by-code="activitiesByCode"
@@ -142,8 +144,6 @@ onMounted(async () => {
       @edit="startEditing"
       @delete="pendingDeleteId = $event"
     />
-
-    <ActivitySummary :summary="summary" />
 
     <Modal
       :open="Boolean(editingId)"

@@ -93,9 +93,7 @@ export const useActivityStore = defineStore("activity", () => {
         body: JSON.stringify(activityData),
       });
 
-      entries.value = entries.value.map((entry) =>
-        entry.id === entryId ? updatedEntry : entry,
-      );
+      entries.value = entries.value.map((entry) => (entry.id === entryId ? updatedEntry : entry));
 
       return updatedEntry;
     } finally {

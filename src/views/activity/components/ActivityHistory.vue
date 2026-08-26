@@ -92,10 +92,10 @@ watch(activityFilterOptions, (options) => {
         <span class="grid size-10 place-items-center rounded-full bg-[#fbf4e9] text-[#9d7958]">
           <component :is="icons.common.clock" aria-hidden="true" class="size-5" />
         </span>
-        <h2 class="text-2xl font-extrabold">Historial de actividades</h2>
+        <h2 class="text-xl font-extrabold">Historial de actividades</h2>
       </div>
       <div
-        class="grid min-w-[430px] grid-cols-2 gap-2 max-[520px]:w-full max-[520px]:min-w-0 max-[520px]:grid-cols-1"
+        class="grid min-w-/[430px/] grid-cols-2 gap-2 max-[520px]:w-full max-[520px]:min-w-0 max-[520px]:grid-cols-1"
       >
         <Select
           id="activity-filter"
@@ -123,9 +123,7 @@ watch(activityFilterOptions, (options) => {
       <template #cell-log_date="{ value }">{{ formatLogDate(value) }}</template>
       <template #cell-activity_type="{ row }">
         <div class="flex items-center gap-3">
-          <span
-            class="grid size-9 place-items-center rounded-full bg-[#f8f2ed] text-[#8f6558]"
-          >
+          <span class="grid size-9 place-items-center rounded-full bg-[#f8f2ed] text-[#8f6558]">
             <component
               :is="activitiesByCode.get(row.activity_type)?.icon ?? icons.common.person"
               aria-hidden="true"
