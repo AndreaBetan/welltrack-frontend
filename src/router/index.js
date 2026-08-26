@@ -9,6 +9,7 @@ import NutritionView from "@/views/nutrition/NutritionView.vue";
 import ProfileView from "@/views/profile/ProfileView.vue";
 import RecommendationsView from "@/views/recommendations/RecommendationsView.vue";
 import SleepView from "@/views/sleep/SleepView.vue";
+import ProgressView from "@/views/progress/ProgressView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -62,6 +63,12 @@ const router = createRouter({
       name: "recommendations",
       meta: { requiresAuth: true },
       component: RecommendationsView,
+    },
+    {
+      path: "/progreso",
+      name: "progress",
+      meta: { requiresAuth: true },
+      component: ProgressView,
     },
     {
       path: "/perfil",
