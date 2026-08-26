@@ -1,30 +1,74 @@
 <script setup>
-import { reactive } from "vue";
-import BaseCard from "@/components/ui/BaseCard.vue";
-import DataTable from "@/components/data/DataTable.vue";
-import EmptyState from "@/components/ui/EmptyState.vue";
-import FormField from "@/components/forms/FormField.vue";
-import LoadingState from "@/components/ui/LoadingState.vue";
+import { computed, onMounted, ref } from "vue";
 import PageHeader from "@/components/ui/PageHeader.vue";
+import { ConfirmModal, Modal } from "@/components/modals";
 import { useSleepStore } from "@/stores/sleepStore";
 import { useToastStore } from "@/stores/toastStore";
+import { todayLocalDate } from "@/utils/dateUtils";
+import SleepForm from "./components/SleepForm.vue";
+import SleepHistory from "./components/SleepHistory.vue";
+import SleepSummary from "./components/SleepSummary.vue";
+import { useSleepForm } from "./composables/useSleepForm";
+import { useSleepMetrics } from "./composables/useSleepMetrics";
 
 const sleepStore = useSleepStore();
 const toastStore = useToastStore();
-const form = reactive({ startTime: "", endTime: "", quality: "" });
+const pendingDeleteId = ref(null);
+const isDeleting = ref(false);
+const entries = computed(() => sleepStore.entries);
 
-const columns = [
-  { key: "startTime", label: "Inicio" },
-  { key: "endTime", label: "Fin" },
-  { key: "durationHours", label: "Duracion", format: (value) => `${value} h` },
-  { key: "quality", label: "Calidad", format: (value) => `${value}%` },
-];
+const { averageDuration } = useSleepMetrics(entries);
+const {
+  form,
+  editForm,
+  editingId,
+  resetCreateForm,
+  startEditing,
+  cancelEditing,
+  toPayload,
+} = useSleepForm();
 
-const handleSubmit = () => {
-  sleepStore.addEntry(form);
-  Object.assign(form, { startTime: "", endTime: "", quality: "" });
-  toastStore.notify("Sueño registrado");
+const createEntry = async () => {
+  try {
+    await sleepStore.addEntry(toPayload(form.value));
+    resetCreateForm();
+    toastStore.notify("Sueño registrado");
+  } catch (error) {
+    toastStore.notify(error.message, "error");
+  }
 };
+
+const updateEntry = async () => {
+  try {
+    await sleepStore.updateEntry(editingId.value, toPayload(editForm.value));
+    cancelEditing();
+    toastStore.notify("Registro de sueño actualizado");
+  } catch (error) {
+    toastStore.notify(error.message, "error");
+  }
+};
+
+const deleteEntry = async () => {
+  if (!pendingDeleteId.value) return;
+  isDeleting.value = true;
+  try {
+    await sleepStore.deleteEntry(pendingDeleteId.value);
+    pendingDeleteId.value = null;
+    toastStore.notify("Registro de sueño eliminado");
+  } catch (error) {
+    toastStore.notify(error.message, "error");
+  } finally {
+    isDeleting.value = false;
+  }
+};
+
+onMounted(async () => {
+  try {
+    await Promise.all([sleepStore.loadEntries(), sleepStore.loadFactors()]);
+  } catch (error) {
+    toastStore.notify(error.message, "error");
+  }
+});
 </script>
 
 <template>
@@ -32,34 +76,62 @@ const handleSubmit = () => {
     <PageHeader
       eyebrow="Descanso"
       title="Sueño"
-      description="Registra tus horas de descanso y la calidad percibida de cada noche."
+      description="Registra tus horarios, calidad percibida y factores relacionados con el descanso."
     />
 
-    <BaseCard>
-      <form class="grid grid-cols-4 gap-4 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1" @submit.prevent="handleSubmit">
-        <FormField id="sleep-start" v-model="form.startTime" label="Hora de inicio" type="time" />
-        <FormField id="sleep-end" v-model="form.endTime" label="Hora de fin" type="time" />
-        <FormField id="sleep-quality" v-model="form.quality" label="Calidad del sueño" type="number" min="1" max="100" />
-        <button class="h-11 self-end rounded-lg bg-[#573e33] px-5 font-bold text-white transition hover:bg-[#6d4d40]">
-          Guardar
-        </button>
-      </form>
-    </BaseCard>
+    <SleepForm
+      v-model="form"
+      title="Registrar descanso"
+      :factors="sleepStore.factors"
+      :loading="sleepStore.isCreating"
+      :factors-loading="sleepStore.isFactorsLoading"
+      :max-date="todayLocalDate()"
+      @submit="createEntry"
+    />
 
-    <section class="grid gap-4">
-      <h2 class="text-2xl font-bold">Historial</h2>
-      <LoadingState v-if="sleepStore.isLoading" />
-      <DataTable
-        v-else-if="sleepStore.entries.length"
-        :columns="columns"
-        :rows="sleepStore.entries"
-        :max-rows="5"
+    <SleepSummary
+      :last-duration="sleepStore.lastEntry?.duration_minutes"
+      :average-duration="averageDuration"
+      :average-quality="sleepStore.averageQuality"
+    />
+
+    <SleepHistory
+      :entries="sleepStore.entries"
+      :loading="sleepStore.isFetching"
+      @edit="startEditing"
+      @delete="pendingDeleteId = $event"
+    />
+
+    <Modal
+      :open="Boolean(editingId)"
+      title="Editar descanso"
+      :loading="Boolean(sleepStore.updatingId)"
+      @update:open="cancelEditing"
+    >
+      <SleepForm
+        v-model="editForm"
+        id-prefix="edit-sleep"
+        :card="false"
+        :factors="sleepStore.factors"
+        :loading="Boolean(sleepStore.updatingId)"
+        :factors-loading="sleepStore.isFactorsLoading"
+        :max-date="todayLocalDate()"
+        submit-label="Guardar cambios"
+        cancel-label="Cancelar"
+        @submit="updateEntry"
+        @cancel="cancelEditing"
       />
-      <EmptyState
-        v-else
-        title="Sin datos de descanso"
-        description="Registra tu ultima noche para recibir recomendaciones mas precisas."
-      />
-    </section>
+    </Modal>
+
+    <ConfirmModal
+      :open="Boolean(pendingDeleteId)"
+      title="Eliminar registro de sueño"
+      message="Esta acción eliminará el registro de tu historial. ¿Quieres continuar?"
+      confirm-label="Eliminar"
+      :loading="isDeleting"
+      destructive
+      @update:open="pendingDeleteId = null"
+      @confirm="deleteEntry"
+    />
   </section>
 </template>
