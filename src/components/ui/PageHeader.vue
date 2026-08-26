@@ -2,7 +2,7 @@
 defineProps({
   eyebrow: { type: String, required: true },
   title: { type: String, required: true },
-  description: { type: String, required: true },
+  description: { type: String, default: "" },
 });
 </script>
 
@@ -14,7 +14,7 @@ defineProps({
     <h1 class="m-0 text-4xl font-extrabold text-[#573e33] max-[640px]:text-3xl">
       {{ title }}
     </h1>
-    <p class="mt-3 text-base leading-relaxed text-[#573e33]/70">
+    <p v-if="description" class="mt-3 text-base leading-relaxed text-[#573e33]/70">
       {{ description }}
     </p>
   </header>

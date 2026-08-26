@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { icons } from "@/icons";
 
 defineOptions({ name: "FormDatePicker" });
@@ -16,7 +16,10 @@ const props = defineProps({
 
 const model = defineModel({ type: String, default: "" });
 const root = ref(null);
+const trigger = ref(null);
+const calendar = ref(null);
 const isOpen = ref(false);
+const calendarPosition = ref({ top: "0px", left: "0px", width: "19rem" });
 
 const parseDate = (value) => {
   if (!value) return null;
@@ -76,10 +79,42 @@ const calendarDays = computed(() => {
   });
 });
 
-const toggle = () => {
+const updateCalendarPosition = async () => {
+  if (!isOpen.value || !trigger.value) return;
+
+  const rect = trigger.value.getBoundingClientRect();
+  const viewportPadding = 16;
+  const gap = 8;
+  const width = Math.min(304, window.innerWidth - viewportPadding * 2);
+  const left = Math.min(
+    Math.max(rect.right - width, viewportPadding),
+    window.innerWidth - width - viewportPadding,
+  );
+
+  calendarPosition.value = {
+    top: `${rect.bottom + gap}px`,
+    left: `${left}px`,
+    width: `${width}px`,
+  };
+
+  await nextTick();
+  const height = calendar.value?.offsetHeight || 390;
+  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+  const spaceAbove = rect.top - viewportPadding;
+
+  if (height > spaceBelow && spaceAbove > spaceBelow) {
+    calendarPosition.value = {
+      ...calendarPosition.value,
+      top: `${Math.max(viewportPadding, rect.top - height - gap)}px`,
+    };
+  }
+};
+
+const toggle = async () => {
   if (props.disabled) return;
   if (!isOpen.value) visibleMonth.value = selectedDate.value ?? new Date();
   isOpen.value = !isOpen.value;
+  if (isOpen.value) await updateCalendarPosition();
 };
 
 const changeMonth = (amount) => {
@@ -106,7 +141,9 @@ const selectToday = () => {
 };
 
 const handleOutsideClick = (event) => {
-  if (!root.value?.contains(event.target)) isOpen.value = false;
+  if (!root.value?.contains(event.target) && !calendar.value?.contains(event.target)) {
+    isOpen.value = false;
+  }
 };
 
 const handleEscape = (event) => {
@@ -120,11 +157,15 @@ watch(model, (value) => {
 onMounted(() => {
   document.addEventListener("pointerdown", handleOutsideClick);
   document.addEventListener("keydown", handleEscape);
+  window.addEventListener("resize", updateCalendarPosition);
+  window.addEventListener("scroll", updateCalendarPosition, true);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handleOutsideClick);
   document.removeEventListener("keydown", handleEscape);
+  window.removeEventListener("resize", updateCalendarPosition);
+  window.removeEventListener("scroll", updateCalendarPosition, true);
 });
 </script>
 
@@ -134,6 +175,7 @@ onBeforeUnmount(() => {
 
     <div class="relative min-w-0">
       <button
+        ref="trigger"
         :id="id"
         type="button"
         :disabled="disabled"
@@ -157,12 +199,15 @@ onBeforeUnmount(() => {
         required
       />
 
-      <section
-        v-if="isOpen"
-        class="absolute top-full right-0 z-50 mt-2 w-[19rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#b98a81]/25 bg-white p-4 text-[#573e33] shadow-[0_18px_45px_rgba(87,62,51,0.16)]"
-        role="dialog"
-        aria-label="Seleccionar fecha"
-      >
+      <Teleport to="body">
+        <section
+          v-if="isOpen"
+          ref="calendar"
+          class="fixed z-[100] rounded-2xl border border-[#b98a81]/25 bg-white p-4 text-[#573e33] shadow-[0_18px_45px_rgba(87,62,51,0.16)]"
+          :style="calendarPosition"
+          role="dialog"
+          aria-label="Seleccionar fecha"
+        >
         <header class="mb-4 flex items-center justify-between gap-2">
           <button
             type="button"
@@ -223,7 +268,8 @@ onBeforeUnmount(() => {
             Ir a hoy
           </button>
         </footer>
-      </section>
+        </section>
+      </Teleport>
     </div>
   </div>
 </template>
