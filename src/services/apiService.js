@@ -24,7 +24,11 @@ export const apiRequest = async (path, options = {}) => {
   }
 
   if (!response.ok) {
-    throw new Error(result.message || "No se pudo completar la solicitud");
+    const error = new Error(result.message || "No se pudo completar la solicitud");
+    // Conservar el estado HTTP permite tratar respuestas esperadas, como una
+    // distribución nutricional que todavía no se ha configurado.
+    error.status = response.status;
+    throw error;
   }
 
   return result.data;

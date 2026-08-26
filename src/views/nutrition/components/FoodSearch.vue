@@ -1,108 +1,139 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { nextTick, onMounted, ref } from "vue";
 import { useFoodStore } from "@/stores/foodStore";
 import { useToastStore } from "@/stores/toastStore";
 
 const emit = defineEmits(["select"]);
+const props = defineProps({
+  autoOpen: { type: Boolean, default: false },
+  selectedId: { type: [String, Number], default: null },
+});
 const foodStore = useFoodStore();
 const toastStore = useToastStore();
-const container = ref(null);
+const searchInput = ref(null);
 const searchTerm = ref("");
-const isOpen = ref(false);
+const searchMode = ref("name");
 const hasSearched = ref(false);
-let timerId;
-
-const openDropdown = () => {
-  isOpen.value = true;
-};
+const selectedFoodId = ref(null);
 
 const closeDropdown = () => {
-  isOpen.value = false;
   searchTerm.value = "";
   hasSearched.value = false;
   foodStore.clearSearch();
 };
 
-// Cierra el combobox únicamente si el click ocurrió fuera de todo el control.
-// Así se puede escribir, hacer scroll y seleccionar una opción sin perderlo.
-const handleOutsideClick = (event) => {
-  if (isOpen.value && !container.value?.contains(event.target)) {
-    closeDropdown();
-  }
-};
+const handleSearch = async () => {
+  const query = searchTerm.value.trim();
 
-// El debounce reduce el número de peticiones mientras el usuario escribe.
-watch(searchTerm, (value) => {
-  window.clearTimeout(timerId);
-  const query = value.trim();
+  if (searchMode.value === "barcode") {
+    const barcode = query.replace(/[^\d]/g, "");
+    if (![8, 12, 13, 14].includes(barcode.length)) {
+      toastStore.notify("Introduce un código UPC o EAN de 8, 12, 13 o 14 dígitos", "error");
+      return;
+    }
 
-  if (query.length < 2) {
-    hasSearched.value = false;
-    foodStore.clearSearch();
-    return;
-  }
-
-  timerId = window.setTimeout(async () => {
     try {
-      await foodStore.searchFoods(query);
-      if (isOpen.value && searchTerm.value.trim() === query) {
-        hasSearched.value = true;
-      }
+      const food = await foodStore.getFoodByBarcode(barcode);
+      emit("select", food);
+      closeDropdown();
     } catch (error) {
       toastStore.notify(error.message, "error");
     }
-  }, 450);
-});
+    return;
+  }
 
-const selectFood = (food) => {
-  emit("select", food);
-  closeDropdown();
+  if (query.length < 2) {
+    hasSearched.value = false;
+    toastStore.notify("Escribe al menos dos caracteres para buscar", "error");
+    return;
+  }
+
+  try {
+    await foodStore.searchFoods(query);
+    hasSearched.value = true;
+  } catch (error) {
+    toastStore.notify(error.message, "error");
+  }
 };
 
-onMounted(() => document.addEventListener("mousedown", handleOutsideClick));
+const selectFood = async (food) => {
+  selectedFoodId.value = food.externalId;
+  try {
+    const details = await foodStore.getFoodDetails(food.externalId);
+    emit("select", details);
+  } catch (error) {
+    toastStore.notify(error.message, "error");
+  } finally {
+    selectedFoodId.value = null;
+  }
+};
 
-onBeforeUnmount(() => {
-  window.clearTimeout(timerId);
-  document.removeEventListener("mousedown", handleOutsideClick);
+onMounted(async () => {
+  if (props.autoOpen) {
+    await nextTick();
+    searchInput.value?.focus();
+  }
 });
 </script>
 
 <template>
-  <section ref="container" class="relative">
-    <span class="mb-2 block text-sm font-semibold text-[#573e33]/75">
-      Alimento consumido
-    </span>
-
-    <!-- Un único campo cumple las dos funciones: abre el desplegable y filtra
-         sus opciones. No se renderiza un segundo buscador dentro del panel. -->
-    <div class="relative">
-      <input
-        v-model="searchTerm"
-        type="text"
-        role="combobox"
-        autocomplete="off"
-        placeholder="Buscar y seleccionar un alimento"
-        class="h-12 w-full rounded-lg border border-[#b98a81]/35 bg-white px-4 pr-11 outline-none transition hover:border-[#573e33] focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-        :aria-expanded="isOpen"
-        aria-autocomplete="list"
-        aria-controls="food-options"
-        @focus="openDropdown"
-        @click="openDropdown"
-        @keydown.esc="closeDropdown"
-      />
-      <span
-        class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-lg transition"
-        :class="isOpen ? 'rotate-180' : ''"
+  <section class="min-w-0 rounded-xl border border-[#b98a81]/25 bg-white p-4">
+    <h3 class="text-lg font-extrabold">¿Qué has comido?</h3>
+    <div class="mt-4 flex border-b border-[#b98a81]/20">
+      <button
+        type="button"
+        class="relative px-1 pb-3 pr-5 text-sm font-bold transition"
+        :class="searchMode === 'name' ? 'text-[#573e33] after:absolute after:right-5 after:bottom-0 after:left-0 after:h-0.5 after:bg-[#b06f60]' : 'text-[#573e33]/50'"
+        @click="searchMode = 'name'; searchTerm = ''; hasSearched = false; foodStore.clearSearch()"
       >
-        ⌄
-      </span>
+        Por nombre
+      </button>
+      <button
+        type="button"
+        class="relative px-5 pb-3 text-sm font-bold transition"
+        :class="searchMode === 'barcode' ? 'text-[#573e33] after:absolute after:right-5 after:bottom-0 after:left-5 after:h-0.5 after:bg-[#b06f60]' : 'text-[#573e33]/50'"
+        @click="searchMode = 'barcode'; searchTerm = ''; hasSearched = false; foodStore.clearSearch()"
+      >
+        Por código de barras
+      </button>
     </div>
 
-    <div
-      v-if="isOpen"
-      class="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-[#b98a81]/30 bg-white shadow-[0_22px_60px_rgba(87,62,51,0.2)]"
-    >
-      <div id="food-options" class="max-h-[360px] overflow-y-auto p-2" role="listbox">
+    <!-- La consulta solo se envía mediante Enter o el botón para proteger la
+         cuota; escribir por sí solo no reemplaza los resultados anteriores. -->
+    <form class="mt-4 flex gap-2" role="search" @submit.prevent="handleSearch">
+      <div class="relative min-w-0 flex-1">
+        <input
+          ref="searchInput"
+          v-model="searchTerm"
+          type="text"
+          role="combobox"
+          autocomplete="off"
+          :placeholder="searchMode === 'barcode' ? 'Introduce el código UPC o EAN' : 'Buscar y seleccionar un alimento'"
+          :inputmode="searchMode === 'barcode' ? 'numeric' : 'search'"
+          class="h-12 w-full rounded-lg border border-[#b98a81]/35 bg-white px-4 outline-none transition hover:border-[#573e33] focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
+          :aria-expanded="hasSearched"
+          aria-autocomplete="list"
+          aria-controls="food-options"
+          @keydown.esc="closeDropdown"
+        />
+      </div>
+      <button
+        type="submit"
+        :disabled="foodStore.isLoading || foodStore.isLoadingBarcode"
+        class="h-12 shrink-0 rounded-lg bg-[#573e33] px-5 font-bold text-white transition hover:bg-[#6d4d40] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {{ foodStore.isLoading || foodStore.isLoadingBarcode ? "Buscando..." : "Buscar" }}
+      </button>
+    </form>
+
+    <div v-if="searchMode === 'name' && (foodStore.isLoading || hasSearched)" class="mt-5">
+      <div class="mb-2 flex items-center justify-between gap-3 px-1">
+        <strong class="text-sm">Resultados encontrados</strong>
+        <span v-if="hasSearched" class="text-xs text-[#573e33]/50">
+          {{ foodStore.totalHits }} encontrados
+        </span>
+      </div>
+      <div id="food-options" class="max-h-[390px] overflow-y-auto rounded-lg border border-[#b98a81]/20" role="listbox">
         <p v-if="foodStore.isLoading" class="px-4 py-8 text-center text-sm text-[#573e33]/60">
           Buscando alimentos...
         </p>
@@ -113,28 +144,45 @@ onBeforeUnmount(() => {
             :key="food.externalId"
             type="button"
             role="option"
-            class="block w-full rounded-lg px-4 py-3 text-left transition hover:bg-[#f7f1ec] focus:bg-[#f7f1ec] focus:outline-none"
+            :disabled="foodStore.isLoadingDetails"
+            class="flex w-full items-center gap-3 border-b border-[#b98a81]/15 px-4 py-3 text-left transition last:border-b-0 hover:bg-[#f7f1ec]"
+            :class="props.selectedId === food.externalId ? 'bg-[#fbf0eb] ring-1 ring-inset ring-[#b98a81]' : ''"
             @click="selectFood(food)"
           >
-            <span class="block font-bold text-[#573e33]">{{ food.name }}</span>
-            <span v-if="food.brand" class="mt-0.5 block text-xs text-[#573e33]/50">
-              {{ food.brand }}
-            </span>
-            <span class="mt-1 block text-xs text-[#573e33]/65">
-              {{ food.calories100g }} kcal · P {{ food.protein100g }} g · C
-              {{ food.carbs100g }} g · G {{ food.fat100g }} g / 100 g
+            <div class="min-w-0 flex-1">
+              <span class="flex flex-wrap items-center gap-2">
+                <strong class="text-[#573e33]">{{ food.name }}</strong>
+                <span
+                  v-if="food.verified"
+                  class="rounded-full bg-emerald-50 px-2 py-0.5 text-[0.62rem] font-extrabold uppercase tracking-wide text-emerald-700"
+                >
+                  Verificado
+                </span>
+              </span>
+              <span v-if="food.brand" class="mt-0.5 block truncate text-xs text-[#573e33]/50">
+                {{ food.brand }}
+              </span>
+              <span class="mt-1 block text-xs text-[#573e33]/65">
+                P {{ food.protein100g }} g · C {{ food.carbs100g }} g · G {{ food.fat100g }} g / 100 g
+              </span>
+            </div>
+            <div class="shrink-0 text-right">
+              <strong class="block text-sm">{{ food.calories100g }} kcal</strong>
+              <span class="text-[0.65rem] text-[#573e33]/50">por 100 g</span>
+            </div>
+            <span
+              v-if="selectedFoodId === food.externalId"
+              class="shrink-0 text-xs font-semibold text-[#a46f62]"
+            >
+              Cargando...
             </span>
           </button>
 
-          <p v-if="!hasSearched" class="px-4 py-8 text-center text-sm text-[#573e33]/60">
-            Escribe el nombre de un alimento para ver resultados.
-          </p>
-
           <p
-            v-else-if="!foodStore.foods.length"
+            v-if="hasSearched && !foodStore.foods.length"
             class="px-4 py-8 text-center text-sm text-[#573e33]/60"
           >
-            No encontramos alimentos. Prueba otro término, preferiblemente en inglés.
+            No encontramos alimentos. Prueba con otro nombre o una búsqueda más general.
           </p>
         </template>
       </div>

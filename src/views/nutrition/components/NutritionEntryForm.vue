@@ -1,10 +1,14 @@
 <script setup>
 import { computed, reactive, watch } from "vue";
-import BaseCard from "@/components/ui/BaseCard.vue";
+import { DatePicker } from "@/components/forms";
+import { icons } from "@/icons";
 import { useNutritionStore } from "@/stores/nutritionStore";
 import { useToastStore } from "@/stores/toastStore";
 
-const props = defineProps({ food: { type: Object, required: true } });
+const props = defineProps({
+  food: { type: Object, required: true },
+  mealType: { type: String, default: "lunch" },
+});
 const emit = defineEmits(["saved", "cancel"]);
 const nutritionStore = useNutritionStore();
 const toastStore = useToastStore();
@@ -17,12 +21,25 @@ const localDate = () => {
   return `${year}-${month}-${day}`;
 };
 
-const form = reactive({ meal_type: "lunch", serving_grams: 100, description: "", log_date: localDate() });
+const form = reactive({
+  meal_type: props.mealType,
+  serving_grams: 100,
+  description: "",
+  log_date: localDate(),
+});
 const round = (value) => Math.round(value * 10) / 10;
 
-// USDA se normaliza por 100 g; la previsualización aplica la cantidad elegida.
+const hasRequiredNutrition = computed(() =>
+  ["calories100g", "protein100g", "carbs100g", "fat100g"].every((field) =>
+    Number.isFinite(props.food[field]),
+  ),
+);
+const totalServingGrams = computed(() => Number(form.serving_grams || 0));
+
+// Calorie API entrega los macros por 100 g; la previsualización aplica la
+// cantidad elegida sin consumir otra petición de la cuota.
 const preview = computed(() => {
-  const factor = Number(form.serving_grams || 0) / 100;
+  const factor = totalServingGrams.value / 100;
   return {
     calories: round(props.food.calories100g * factor),
     protein: round(props.food.protein100g * factor),
@@ -34,32 +51,44 @@ const preview = computed(() => {
 watch(
   () => props.food.externalId,
   () => {
-    form.serving_grams =
-      props.food.servingSize && String(props.food.servingSizeUnit).toLowerCase() === "g"
-        ? Number(props.food.servingSize)
-        : 100;
+    const defaultGrams = Number(props.food.servingSize ?? 100);
+    form.serving_grams = defaultGrams;
   },
   { immediate: true },
 );
 
 const handleSubmit = async () => {
+  if (!hasRequiredNutrition.value) {
+    toastStore.notify(
+      "Este producto no tiene información nutricional suficiente. Búscalo por nombre.",
+      "error",
+    );
+    return;
+  }
+
   try {
-    await nutritionStore.addEntry({
-      data_source: "usda",
-      external_food_id: props.food.externalId,
-      food_name: props.food.name,
-      brand: props.food.brand,
+    const commonData = {
       meal_type: form.meal_type,
-      serving_grams: Number(form.serving_grams),
       description: form.description.trim() || null,
-      calories: preview.value.calories,
-      protein: preview.value.protein,
-      carbs: preview.value.carbs,
-      fat: preview.value.fat,
       log_date: form.log_date,
-    });
+    };
+
+    if (props.food.sourceType === "barcode") {
+      await nutritionStore.addEntryFromBarcode({
+        ...commonData,
+        barcode: props.food.barcode,
+        serving_grams: totalServingGrams.value,
+      });
+    } else {
+      await nutritionStore.addEntryFromFood({
+        ...commonData,
+        food_id: props.food.externalId,
+        portion_grams: totalServingGrams.value,
+        quantity: 1,
+      });
+    }
     toastStore.notify("Alimento registrado correctamente");
-    emit("saved");
+    emit("saved", form.log_date);
   } catch (error) {
     toastStore.notify(error.message, "error");
   }
@@ -67,51 +96,104 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <BaseCard>
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <p class="text-xs font-extrabold uppercase tracking-[0.1em] text-[#b98a81]">Alimento seleccionado</p>
-        <h2 class="mt-1 text-xl font-bold">{{ food.name }}</h2>
+  <section class="min-w-0 rounded-xl border border-[#b98a81]/25 bg-[#fffdfc] p-5">
+    <div class="flex items-start justify-between gap-4 border-b border-[#b98a81]/20 pb-5">
+      <div class="min-w-0">
+        <p class="text-sm font-extrabold">Alimento seleccionado</p>
+        <h2 class="mt-2 min-w-0 truncate text-xl font-bold">{{ food.name }}</h2>
         <p v-if="food.brand" class="mt-1 text-sm text-[#573e33]/60">{{ food.brand }}</p>
+        <p class="mt-2 text-xs text-[#573e33]/55">
+          {{ food.calories100g }} kcal · P {{ food.protein100g }} g · C {{ food.carbs100g }} g · G {{ food.fat100g }} g / 100 g
+        </p>
       </div>
-      <button type="button" class="rounded-lg px-3 py-2 text-sm font-bold" @click="emit('cancel')">
-        Cambiar
+      <button
+        type="button"
+        class="grid size-9 shrink-0 place-items-center rounded-lg text-[#a46f62] transition hover:bg-[#f7f1ec]"
+        aria-label="Cambiar alimento"
+        @click="emit('cancel')"
+      >
+        <component :is="icons.actions.edit" class="size-4" aria-hidden="true" />
       </button>
     </div>
 
-    <form class="mt-5 grid grid-cols-2 gap-4 max-[640px]:grid-cols-1" @submit.prevent="handleSubmit">
-      <label class="grid gap-2 text-sm font-semibold">
-        Tipo de comida
-        <select v-model="form.meal_type" class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3" required>
-          <option value="breakfast">Desayuno</option>
-          <option value="lunch">Almuerzo</option>
-          <option value="dinner">Cena</option>
-          <option value="snack">Tentempié</option>
-        </select>
-      </label>
-      <label class="grid gap-2 text-sm font-semibold">
-        Cantidad (g)
-        <input v-model="form.serving_grams" type="number" min="0.1" step="0.1" required class="h-11 rounded-lg border border-[#b98a81]/35 px-3" />
-      </label>
-      <label class="grid gap-2 text-sm font-semibold">
-        Fecha
-        <input v-model="form.log_date" type="date" required class="h-11 rounded-lg border border-[#b98a81]/35 px-3" />
-      </label>
-      <label class="grid gap-2 text-sm font-semibold">
+    <form class="mt-5 grid min-w-0 grid-cols-2 gap-4 max-[640px]:grid-cols-1" @submit.prevent="handleSubmit">
+      <fieldset class="col-span-2 grid min-w-0 gap-4 border-b border-[#b98a81]/20 pb-5 max-[640px]:col-span-1">
+        <legend class="text-sm font-bold">Cantidad consumida</legend>
+        <div>
+          <label for="nutrition-serving-grams" class="mb-2 block text-xs font-semibold text-[#573e33]/65">Cantidad (g)</label>
+          <div class="flex h-11 w-full min-w-0 items-center overflow-hidden rounded-lg border border-[#b98a81]/35 bg-white">
+            <input
+              id="nutrition-serving-grams"
+              v-model="form.serving_grams"
+              type="number"
+              min="1"
+              step="1"
+              required
+              class="h-full w-full min-w-0 flex-1 bg-white px-3 text-sm font-semibold outline-none"
+              aria-label="Cantidad consumida en gramos"
+            />
+            <span class="grid h-full w-11 shrink-0 place-items-center border-l border-[#b98a81]/15 bg-[#f7f1ec] text-xs font-bold">g</span>
+          </div>
+        </div>
+
+        <div>
+          <input
+            v-model="form.serving_grams"
+            type="range"
+            min="1"
+            max="500"
+            step="1"
+            class="h-2 w-full cursor-pointer accent-[#573e33]"
+            aria-label="Ajustar cantidad entre 1 y 500 gramos"
+          />
+          <div class="mt-1 flex justify-between text-[0.68rem] text-[#573e33]/45">
+            <span>1 g</span>
+            <span>500 g</span>
+          </div>
+          <p class="mt-2 text-xs text-[#573e33]/55">Total registrado: {{ round(totalServingGrams) }} g</p>
+        </div>
+      </fieldset>
+      <DatePicker
+        id="nutrition-log-date"
+        v-model="form.log_date"
+        label="Fecha"
+        :max="localDate()"
+        required
+      />
+      <label class="grid min-w-0 gap-2 text-sm font-semibold text-[#573e33]/75">
         Nota opcional
-        <input v-model="form.description" type="text" maxlength="2000" placeholder="Ej. preparado a la plancha" class="h-11 rounded-lg border border-[#b98a81]/35 px-3" />
+        <input v-model="form.description" type="text" maxlength="2000" placeholder="Ej. preparado a la plancha" class="h-11 w-full min-w-0 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15" />
       </label>
 
-      <div class="col-span-2 grid grid-cols-4 gap-3 rounded-lg bg-[#f7f1ec] p-4 max-[700px]:grid-cols-2 max-[640px]:col-span-1">
-        <div><span class="block text-xs text-[#573e33]/55">Calorías</span><strong>{{ preview.calories }} kcal</strong></div>
-        <div><span class="block text-xs text-[#573e33]/55">Proteína</span><strong>{{ preview.protein }} g</strong></div>
-        <div><span class="block text-xs text-[#573e33]/55">Carbohidratos</span><strong>{{ preview.carbs }} g</strong></div>
-        <div><span class="block text-xs text-[#573e33]/55">Grasas</span><strong>{{ preview.fat }} g</strong></div>
+      <div class="col-span-2 grid grid-cols-4 gap-2 max-[700px]:grid-cols-2 max-[640px]:col-span-1">
+        <div class="min-w-0 rounded-lg bg-orange-50/60 px-3 py-2">
+          <span class="block text-[0.68rem] font-semibold text-[#573e33]/60">Calorías</span>
+          <strong class="mt-0.5 block text-sm">{{ preview.calories }} kcal</strong>
+        </div>
+        <div class="min-w-0 rounded-lg bg-emerald-50/60 px-3 py-2">
+          <span class="block text-[0.68rem] font-semibold text-[#573e33]/60">Proteína</span>
+          <strong class="mt-0.5 block text-sm">{{ preview.protein }} g</strong>
+        </div>
+        <div class="min-w-0 rounded-lg bg-purple-50/60 px-3 py-2">
+          <span class="block text-[0.68rem] font-semibold text-[#573e33]/60">Carbohidratos</span>
+          <strong class="mt-0.5 block text-sm">{{ preview.carbs }} g</strong>
+        </div>
+        <div class="min-w-0 rounded-lg bg-amber-50/60 px-3 py-2">
+          <span class="block text-[0.68rem] font-semibold text-[#573e33]/60">Grasas</span>
+          <strong class="mt-0.5 block text-sm">{{ preview.fat }} g</strong>
+        </div>
       </div>
 
-      <button type="submit" :disabled="nutritionStore.isLoading" class="col-span-2 h-11 rounded-lg bg-[#573e33] font-bold text-white disabled:opacity-50 max-[640px]:col-span-1">
+      <p
+        v-if="!hasRequiredNutrition"
+        class="col-span-2 rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 max-[640px]:col-span-1"
+      >
+        Este código no incluye todos los macronutrientes necesarios. Busca el alimento por nombre para registrarlo.
+      </p>
+
+      <button type="submit" :disabled="nutritionStore.isLoading || !hasRequiredNutrition" class="col-span-2 h-12 rounded-lg bg-[#573e33] font-bold text-white transition hover:bg-[#6d4d40] disabled:opacity-50 max-[640px]:col-span-1">
         {{ nutritionStore.isLoading ? "Guardando..." : "Registrar alimento" }}
       </button>
     </form>
-  </BaseCard>
+  </section>
 </template>

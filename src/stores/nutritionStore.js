@@ -15,9 +15,7 @@ export const useNutritionStore = defineStore("nutrition", () => {
   const isLoading = ref(false);
 
   const todayEntries = computed(() =>
-    entries.value.filter(
-      (entry) => String(entry.log_date).slice(0, 10) === localDate(),
-    ),
+    entries.value.filter((entry) => String(entry.log_date).slice(0, 10) === localDate()),
   );
 
   const sumToday = (field) =>
@@ -58,6 +56,34 @@ export const useNutritionStore = defineStore("nutrition", () => {
     }
   };
 
+  const addEntryFromFood = async (entryData) => {
+    isLoading.value = true;
+    try {
+      const entry = await apiRequest("/nutrition/from-food", {
+        method: "POST",
+        body: JSON.stringify(entryData),
+      });
+      entries.value.unshift(entry);
+      return entry;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const addEntryFromBarcode = async (entryData) => {
+    isLoading.value = true;
+    try {
+      const entry = await apiRequest("/nutrition/from-barcode", {
+        method: "POST",
+        body: JSON.stringify(entryData),
+      });
+      entries.value.unshift(entry);
+      return entry;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const updateEntry = async (entryId, entryData) => {
     isLoading.value = true;
 
@@ -67,6 +93,31 @@ export const useNutritionStore = defineStore("nutrition", () => {
         body: JSON.stringify(entryData),
       });
       const index = entries.value.findIndex((entry) => entry.id === entryId);
+      if (index !== -1) entries.value[index] = updatedEntry;
+      return updatedEntry;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const recalculateEntry = async (entry, servingGrams) => {
+    isLoading.value = true;
+    try {
+      // Los códigos comerciales suelen tener entre 8 y 14 dígitos. Los demás
+      // identificadores corresponden a la búsqueda por nombre de CalorieAPI.
+      const isBarcode = /^\d{8,14}$/.test(String(entry.external_food_id || ""));
+      const updatedEntry = await apiRequest(
+        `/nutrition/${isBarcode ? "from-barcode" : "from-food"}/${entry.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(
+            isBarcode
+              ? { serving_grams: Number(servingGrams) }
+              : { portion_grams: Number(servingGrams), quantity: 1 },
+          ),
+        },
+      );
+      const index = entries.value.findIndex((current) => current.id === entry.id);
       if (index !== -1) entries.value[index] = updatedEntry;
       return updatedEntry;
     } finally {
@@ -99,7 +150,10 @@ export const useNutritionStore = defineStore("nutrition", () => {
     totalFatToday,
     loadEntries,
     addEntry,
+    addEntryFromFood,
+    addEntryFromBarcode,
     updateEntry,
+    recalculateEntry,
     deleteEntry,
     clearEntries,
   };
