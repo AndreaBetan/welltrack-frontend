@@ -22,6 +22,7 @@ export const useAuthStore = defineStore("auth", () => {
       const session = await apiRequest("/auth/login", {
         method: "POST",
         body: JSON.stringify(credentials),
+        auth: false,
       });
 
       saveSession(session);
@@ -38,6 +39,7 @@ export const useAuthStore = defineStore("auth", () => {
       const session = await apiRequest("/auth/register", {
         method: "POST",
         body: JSON.stringify(userData),
+        auth: false,
       });
 
       saveSession(session);
@@ -89,6 +91,34 @@ export const useAuthStore = defineStore("auth", () => {
     localStorage.removeItem("WTK");
   };
 
+  const requestPasswordReset = async (email) => {
+    isLoading.value = true;
+
+    try {
+      return await apiRequest("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        auth: false,
+      });
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const resetPassword = async ({ token, password }) => {
+    isLoading.value = true;
+
+    try {
+      return await apiRequest("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, password }),
+        auth: false,
+      });
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   return {
     user,
     token,
@@ -99,5 +129,7 @@ export const useAuthStore = defineStore("auth", () => {
     loadCurrentUser,
     updateProfile,
     logout,
+    requestPasswordReset,
+    resetPassword,
   };
 });

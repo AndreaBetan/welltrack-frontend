@@ -1,25 +1,26 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const apiRequest = async (path, options = {}) => {
+  const { auth = true, headers: customHeaders, ...requestOptions } = options;
   const token = localStorage.getItem("WTK");
 
   const headers = {
     "Content-Type": "application/json",
-    ...options.headers,
+    ...customHeaders,
   };
 
-  if (token) {
+  if (auth && token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_URL}${path}`, {
-    ...options,
+    ...requestOptions,
     headers,
   });
 
   const result = await response.json().catch(() => ({}));
 
-  if (response.status === 401) {
+  if (auth && response.status === 401) {
     localStorage.removeItem("WTK");
   }
 

@@ -1,7 +1,7 @@
 <script setup>
 import { reactive } from "vue";
 import { RouterLink, useRouter } from "vue-router";
-import logoApp from "@/assets/wellTrack.png";
+import AuthLayout from "@/components/auth/AuthLayout.vue";
 import { useToastStore } from "@/stores/toastStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useGoalStore } from "@/stores/goalStore";
@@ -34,18 +34,8 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <section class="min-h-screen bg-white text-[#573e33]">
-    <div class="grid min-h-screen grid-cols-2 max-[980px]:grid-cols-1">
-      <img :src="logoApp" alt="WellTrack" class="h-full w-full object-cover max-[980px]:hidden" />
-
-      <div class="flex items-center justify-center px-8 py-12">
-        <div class="w-full max-w-md">
-          <p class="mb-2 text-sm font-extrabold uppercase tracking-[0.12em] text-[#b98a81]">
-            WellTrack
-          </p>
-          <h1 class="text-3xl font-extrabold">Inicio de sesion</h1>
-
-          <form class="mt-8 grid gap-4" @submit.prevent="handleSubmit">
+  <AuthLayout title="Inicio de sesión">
+    <form class="mt-8 grid gap-4" @submit.prevent="handleSubmit">
             <label class="grid gap-2 text-sm font-semibold text-[#573e33]/75" for="login-email">
               Correo electronico
               <input
@@ -68,6 +58,14 @@ const handleSubmit = async () => {
                 class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
               />
             </label>
+            <div class="-mt-1 text-right">
+              <RouterLink
+                :to="{ name: 'forgot-password' }"
+                class="text-sm font-bold text-[#573e33] hover:underline"
+              >
+                ¿Has olvidado tu contraseña?
+              </RouterLink>
+            </div>
             <button
               type="submit"
               :disabled="authStore.isLoading"
@@ -75,16 +73,13 @@ const handleSubmit = async () => {
             >
               {{ authStore.isLoading ? "Entrando" : "Entrar" }}
             </button>
-          </form>
+    </form>
 
-          <p class="mt-6 text-center text-sm text-[#573e33]/70">
-            Todavia no eres usuario?
-            <RouterLink :to="{ name: 'register' }" class="font-bold text-[#573e33] hover:underline"
-              >Registrate</RouterLink
-            >
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
+    <p class="mt-6 text-center text-sm text-[#573e33]/70">
+      ¿Todavía no eres usuario?
+      <RouterLink :to="{ name: 'register' }" class="font-bold text-[#573e33] hover:underline">
+        Regístrate
+      </RouterLink>
+    </p>
+  </AuthLayout>
 </template>

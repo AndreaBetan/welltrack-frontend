@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from "vue-router";
 
 import LoginView from "@/views/auth/LoginView.vue";
 import RegisterView from "@/views/auth/RegisterView.vue";
+import ForgotPasswordView from "@/views/auth/ForgotPasswordView.vue";
+import ResetPasswordView from "@/views/auth/ResetPasswordView.vue";
 import GoalsOnboardingView from "@/views/onboarding/GoalsOnboardingView.vue";
 import ActivityView from "@/views/activity/ActivityView.vue";
 import DashboardView from "@/views/dashboard/DashboardView.vue";
@@ -22,11 +24,24 @@ const router = createRouter({
       path: "/login",
       name: "login",
       component: LoginView,
+      meta: { guestOnly: true },
     },
     {
       path: "/registro",
       name: "register",
       component: RegisterView,
+      meta: { guestOnly: true },
+    },
+    {
+      path: "/recuperar-contrasena",
+      name: "forgot-password",
+      component: ForgotPasswordView,
+      meta: { guestOnly: true },
+    },
+    {
+      path: "/restablecer-contrasena",
+      name: "reset-password",
+      component: ResetPasswordView,
     },
     {
       path: "/configurar-objetivos",
@@ -90,7 +105,7 @@ router.beforeEach((to) => {
     return { name: "login" };
   }
 
-  if (hasToken && (to.name === "login" || to.name === "register")) {
+  if (hasToken && to.meta.guestOnly) {
     return { name: "dashboard" };
   }
 });

@@ -1,7 +1,7 @@
 <script setup>
 import { reactive } from "vue";
 import { RouterLink, useRouter } from "vue-router";
-import logoApp from "@/assets/wellTrack.png";
+import AuthLayout from "@/components/auth/AuthLayout.vue";
 import { useToastStore } from "@/stores/toastStore";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -32,18 +32,8 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <section class="min-h-screen bg-white text-[#573e33]">
-    <div class="grid min-h-screen grid-cols-2 max-[980px]:grid-cols-1">
-      <img :src="logoApp" alt="WellTrack" class="h-full w-full object-cover max-[980px]:hidden" />
-
-      <div class="flex items-center justify-center px-8 py-12">
-        <div class="w-full max-w-md">
-          <p class="mb-2 text-sm font-extrabold uppercase tracking-[0.12em] text-[#b98a81]">
-            WellTrack
-          </p>
-          <h1 class="text-3xl font-extrabold">Crear cuenta</h1>
-
-          <form class="mt-8 grid gap-4" @submit.prevent="handleSubmit">
+  <AuthLayout title="Crear cuenta">
+    <form class="mt-8 grid gap-4" @submit.prevent="handleSubmit">
             <input
               v-model="form.name"
               type="text"
@@ -83,16 +73,13 @@ const handleSubmit = async () => {
             >
               {{ authStore.isLoading ? "Creando cuenta..." : "Registrarme" }}
             </button>
-          </form>
+    </form>
 
-          <p class="mt-6 text-center text-sm text-[#573e33]/70">
-            Ya tienes cuenta?
-            <RouterLink :to="{ name: 'login' }" class="font-bold text-[#573e33] hover:underline"
-              >Inicia sesion</RouterLink
-            >
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
+    <p class="mt-6 text-center text-sm text-[#573e33]/70">
+      ¿Ya tienes cuenta?
+      <RouterLink :to="{ name: 'login' }" class="font-bold text-[#573e33] hover:underline">
+        Inicia sesión
+      </RouterLink>
+    </p>
+  </AuthLayout>
 </template>

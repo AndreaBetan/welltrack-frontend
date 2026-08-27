@@ -20,10 +20,12 @@ onMounted(async () => {
 
 const route = useRoute();
 
-// Login, registro y onboarding ocupan toda la pantalla y no muestran todavía
+// Las vistas de acceso y onboarding ocupan toda la pantalla y no muestran todavía
 // la navegación principal de la aplicación.
 const isFullPageRoute = computed(() =>
-  ["login", "register", "goals-onboarding"].includes(route.name),
+  ["login", "register", "forgot-password", "reset-password", "goals-onboarding"].includes(
+    route.name,
+  ),
 );
 </script>
 
