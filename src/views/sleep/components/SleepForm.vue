@@ -60,7 +60,10 @@ const toggleFactor = (code) => {
 <template>
   <component :is="card ? BaseCard : 'div'">
     <h2 v-if="title" class="mb-6 text-xl font-extrabold">{{ title }}</h2>
-    <form class="grid grid-cols-4 gap-4 max-[1050px]:grid-cols-2 max-[640px]:grid-cols-1" @submit.prevent="emit('submit')">
+    <form
+      class="grid min-w-0 grid-cols-4 gap-4 max-[1050px]:grid-cols-2 max-[640px]:grid-cols-[minmax(0,1fr)]"
+      @submit.prevent="emit('submit')"
+    >
       <DatePicker :id="`${idPrefix}-date`" v-model="fields.log_date.value" label="Fecha de despertar" :max="maxDate" required />
       <FormField :id="`${idPrefix}-start`" v-model="fields.start_time.value" label="Hora de inicio" type="time" />
       <FormField :id="`${idPrefix}-end`" v-model="fields.end_time.value" label="Hora de fin" type="time" />

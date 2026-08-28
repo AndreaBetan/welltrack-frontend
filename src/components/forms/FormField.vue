@@ -47,7 +47,18 @@ const model = defineModel({ type: [String, Number], default: "" });
       :step="step"
       :autocomplete="autocomplete"
       :required="required"
-      class="h-11 w-full min-w-0 rounded-lg border border-[#b98a81]/35 bg-white px-3 text-[#573e33] outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
+      class="block h-11 w-full min-w-0 rounded-lg border border-[#b98a81]/35 bg-white px-3 text-[#573e33] outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
+      :class="type === 'time' ? 'appearance-none' : ''"
     />
   </div>
 </template>
+
+<style scoped>
+/* Safari iOS aplica un ancho intrínseco a los campos de hora que puede
+   desbordar incluso un contenedor con width: 100%. */
+input[type="time"] {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  -webkit-appearance: none;
+}
+</style>
