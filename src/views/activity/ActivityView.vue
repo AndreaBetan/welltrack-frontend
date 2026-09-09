@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from "@/components/ui/PageHeader.vue";
 import { computed, onMounted, ref } from "vue";
 import { icons } from "@/icons";
 import BaseCard from "@/components/ui/BaseCard.vue";
@@ -90,20 +91,14 @@ onMounted(async () => {
 
 <template>
   <section class="grid gap-6 text-[#573e33]">
-    <header
+    <div
       class="flex items-end justify-between gap-6 max-[720px]:items-start max-[720px]:flex-col"
     >
-      <div>
-        <p class="mb-2 text-sm font-extrabold uppercase tracking-[0.14em] text-[#c98274]">
-          Movimiento
-        </p>
-        <h1 class="text-4xl font-extrabold tracking-[-0.03em] max-[640px]:text-3xl">
-          Actividad física
-        </h1>
-        <p class="mt-3 text-[#573e33]/65">
-          Registra tu actividad física, duración y energía gastada durante el día.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Movimiento"
+        title="Actividad física"
+        description="Registra tu actividad física, duración y energía gastada durante el día."
+      />
       <div
         class="flex min-w-60 items-center gap-4 rounded-2xl border border-[#b98a81]/25 bg-white px-5 py-4 shadow-[0_12px_35px_rgba(87,62,51,0.06)] max-[420px]:w-full"
       >
@@ -116,7 +111,7 @@ onMounted(async () => {
           <span class="text-sm text-[#573e33]/65">{{ summary.calories }} kcal quemadas</span>
         </div>
       </div>
-    </header>
+    </div>
 
     <BaseCard>
       <div class="mb-6 flex items-center gap-3">
