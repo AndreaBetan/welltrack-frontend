@@ -1,8 +1,8 @@
 <script setup>
+import { DatePicker, FormField, Select } from "@/components/forms";
+import { useFormFields } from "@/composables/useFormFields";
 import { computed } from "vue";
 import { icons } from "@/icons";
-import FormField from "@/components/forms/FormField.vue";
-import { DatePicker, Select } from "@/components/forms";
 
 defineOptions({ name: "ActivityForm" });
 
@@ -19,31 +19,27 @@ const props = defineProps({
 const emit = defineEmits(["submit", "cancel"]);
 const model = defineModel({ type: Object, required: true });
 
-const fieldModel = (key) =>
-  computed({
-    get: () => model.value[key],
-    set: (value) => {
-      model.value = { ...model.value, [key]: value };
-    },
-  });
-
-const activityType = fieldModel("activity_type");
-const durationMinutes = fieldModel("duration_minutes");
-const caloriesBurned = fieldModel("calories_burned");
-const logDate = fieldModel("log_date");
-const intensity = fieldModel("intensity");
-const notes = fieldModel("notes");
+const {
+  activity_type: activityType,
+  duration_minutes: durationMinutes,
+  calories_burned: caloriesBurned,
+  log_date: logDate,
+  intensity,
+  notes,
+} = useFormFields(model, ["activity_type", "duration_minutes", "calories_burned", "log_date", "intensity", "notes"]);
 const intensityOptions = [
   { value: "low", label: "Baja" },
   { value: "moderate", label: "Moderada" },
   { value: "high", label: "Alta" },
 ];
+
 const requiresIntensity = computed(() => {
   const selectedActivity = props.activityTypes.find(
     (activity) => activity.value === activityType.value,
   );
   return Boolean(selectedActivity && !selectedActivity.intensity);
 });
+
 </script>
 
 <template>

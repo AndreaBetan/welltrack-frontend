@@ -1,12 +1,11 @@
 <script setup>
+import { DatePicker, FormField } from "@/components/forms";
 import { reactive, ref } from "vue";
-import { DatePicker } from "@/components/forms";
-import FormField from "@/components/forms/FormField.vue";
 import { ConfirmModal, Modal } from "@/components/modals";
 import { icons } from "@/icons";
 import { useNutritionStore } from "@/stores/nutritionStore";
 import { useToastStore } from "@/stores/toastStore";
-import { todayLocalDate } from "@/utils/dateUtils";
+import { todayLocalDate, toDateOnlyValue } from "@/utils/dateUtils";
 
 defineOptions({ name: "MealEntries" });
 defineProps({ entries: { type: Array, required: true } });
@@ -22,7 +21,7 @@ const startEditing = (entry) => {
   Object.assign(form, {
     serving_grams: Number(entry.serving_grams),
     description: entry.description ?? "",
-    log_date: String(entry.log_date).slice(0, 10),
+    log_date: toDateOnlyValue(entry.log_date),
   });
 };
 
@@ -106,9 +105,30 @@ const removeEntry = async () => {
 
   <Modal :open="Boolean(editingEntry)" title="Editar alimento registrado" :loading="nutritionStore.isLoading" @update:open="editingEntry = null">
     <form class="grid grid-cols-2 gap-4 max-[600px]:grid-cols-1" @submit.prevent="saveEntry">
-      <FormField id="edit-nutrition-grams" v-model="form.serving_grams" label="Cantidad consumida (g)" type="number" min="1" step="1" required />
-      <DatePicker id="edit-nutrition-date" v-model="form.log_date" label="Fecha" :max="todayLocalDate()" required />
-      <label class="col-span-2 grid gap-2 text-sm font-semibold max-[600px]:col-span-1">Nota opcional<input v-model="form.description" maxlength="2000" class="h-11 rounded-lg border border-[#b98a81]/35 px-3 outline-none focus:border-[#573e33]" /></label>
+      <FormField
+        id="edit-nutrition-grams"
+        v-model="form.serving_grams"
+        label="Cantidad consumida (g)"
+        type="number"
+        min="1"
+        step="1"
+        required
+      />
+      <DatePicker
+        id="edit-nutrition-date"
+        v-model="form.log_date"
+        label="Fecha"
+        :max="todayLocalDate()"
+        required
+      />
+      <FormField
+        id="edit-nutrition-note"
+        v-model="form.description"
+        label="Nota opcional"
+        maxlength="2000"
+        :required="false"
+        class="col-span-2 max-[600px]:col-span-1"
+      />
       <div class="col-span-2 flex justify-end gap-3 max-[600px]:col-span-1">
         <button type="button" class="h-11 rounded-lg border border-[#b98a81]/35 px-5 font-bold" @click="editingEntry = null">Cancelar</button>
         <button type="submit" class="h-11 rounded-lg bg-[#573e33] px-5 font-bold text-white">Guardar cambios</button>

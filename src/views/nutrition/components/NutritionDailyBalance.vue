@@ -1,8 +1,9 @@
 <script setup>
-import { computed } from "vue";
 import { DatePicker } from "@/components/forms";
+import { round } from "@/utils/numberUtils";
+import { computed } from "vue";
 import { icons } from "@/icons";
-import { todayLocalDate } from "@/utils/dateUtils";
+import { todayLocalDate, toDateOnlyValue } from "@/utils/dateUtils";
 
 defineOptions({ name: "NutritionDailyBalance" });
 
@@ -13,9 +14,8 @@ const props = defineProps({
 });
 const selectedDate = defineModel({ type: String, required: true });
 
-const round = (value) => Math.round(Number(value || 0) * 10) / 10;
 const entriesForDate = computed(() =>
-  props.entries.filter((entry) => String(entry.log_date).slice(0, 10) === selectedDate.value),
+  props.entries.filter((entry) => toDateOnlyValue(entry.log_date) === selectedDate.value),
 );
 const total = (field) =>
   round(entriesForDate.value.reduce((sum, entry) => sum + Number(entry[field] || 0), 0));
@@ -24,8 +24,8 @@ const calorieGoal = computed(
   () =>
     props.goals
       .filter((goal) => {
-      const startDate = String(goal.start_date ?? "").slice(0, 10);
-      const endDate = goal.end_date ? String(goal.end_date).slice(0, 10) : null;
+      const startDate = toDateOnlyValue(goal.start_date);
+      const endDate = goal.end_date ? toDateOnlyValue(goal.end_date) : null;
         return (
           goal.goal_type === "daily_calories" &&
           goal.status !== "cancelled" &&

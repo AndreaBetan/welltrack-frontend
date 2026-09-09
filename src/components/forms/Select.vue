@@ -83,6 +83,7 @@ onBeforeUnmount(() => {
       aria-hidden="true"
       class="pointer-events-none absolute bottom-0 left-1/2 size-px opacity-0"
       tabindex="-1"
+      :disabled="disabled"
       required
     />
 

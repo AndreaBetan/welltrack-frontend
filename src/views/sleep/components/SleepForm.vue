@@ -1,8 +1,7 @@
 <script setup>
-import { computed } from "vue";
+import { DatePicker, FormField, Select } from "@/components/forms";
+import { useFormFields } from "@/composables/useFormFields";
 import BaseCard from "@/components/ui/BaseCard.vue";
-import FormField from "@/components/forms/FormField.vue";
-import { DatePicker, Select } from "@/components/forms";
 import { icons } from "@/icons";
 
 defineOptions({ name: "SleepForm" });
@@ -22,24 +21,13 @@ defineProps({
 const emit = defineEmits(["submit", "cancel"]);
 const model = defineModel({ type: Object, required: true });
 
-const fieldModel = (key) =>
-  computed({
-    get: () => model.value[key],
-    set: (value) => {
-      model.value = { ...model.value, [key]: value };
-    },
-  });
-
-const fields = Object.fromEntries(
-  ["log_date", "start_time", "end_time", "sleep_quality", "sleep_latency_minutes", "awakenings_count", "sleep_type"].map(
-    (key) => [key, fieldModel(key)],
-  ),
-);
+const fields = useFormFields(model, ["log_date", "start_time", "end_time", "sleep_quality", "sleep_latency_minutes", "awakenings_count", "sleep_type"]);
 
 const sleepTypeOptions = [
   { value: "night", label: "Sueño nocturno" },
   { value: "nap", label: "Siesta" },
 ];
+
 const qualityOptions = [
   { value: 1, label: "Muy mala" },
   { value: 2, label: "Mala" },
@@ -55,6 +43,7 @@ const toggleFactor = (code) => {
   else factors.splice(index, 1);
   model.value = { ...model.value, factors };
 };
+
 </script>
 
 <template>

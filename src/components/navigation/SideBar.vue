@@ -107,7 +107,7 @@ const navigationItems = [
           v-for="item in navigationItems"
           :key="item.route"
           :to="{ name: item.route }"
-          class="flex min-h-\[52px\] items-center gap-4 rounded-xl px-4 py-3 font-semibold text-[#573e33]/75 transition hover:bg-[#f7f1ec] [&.router-link-active]:bg-[#f1e4df] [&.router-link-active]:text-[#573e33]"
+          class="flex min-h-[52px] items-center gap-4 rounded-xl px-4 py-3 font-semibold text-[#573e33]/75 transition hover:bg-[#f7f1ec] [&.router-link-active]:bg-[#f1e4df] [&.router-link-active]:text-[#573e33]"
         >
           <component :is="item.icon" :size="21" :stroke-width="1.8" aria-hidden="true" />
           {{ item.name }}

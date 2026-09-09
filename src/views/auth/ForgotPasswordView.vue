@@ -1,4 +1,5 @@
 <script setup>
+import { FormField } from "@/components/forms";
 import { ref } from "vue";
 import { RouterLink } from "vue-router";
 import AuthLayout from "@/components/auth/AuthLayout.vue";
@@ -50,20 +51,17 @@ const handleSubmit = async () => {
     </div>
 
     <form v-else class="mt-8 grid gap-4" @submit.prevent="handleSubmit">
-      <label class="grid gap-2 text-sm font-semibold text-[#573e33]/75" for="forgot-email">
-        Correo electrónico
-        <input
-          id="forgot-email"
-          v-model.trim="email"
-          type="email"
-          autocomplete="email"
-          maxlength="255"
-          required
-          :aria-invalid="Boolean(errorMessage)"
-          :aria-describedby="errorMessage ? 'forgot-error' : undefined"
-          class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 text-[#573e33] outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-        />
-      </label>
+      <FormField
+        label="Correo electrónico"
+        id="forgot-email"
+        v-model.trim="email"
+        type="email"
+        autocomplete="email"
+        maxlength="255"
+        required
+        :aria-invalid="Boolean(errorMessage)"
+        :aria-describedby="errorMessage ? 'forgot-error' : undefined"
+      />
 
       <p v-if="errorMessage" id="forgot-error" class="text-sm text-red-700" role="alert">
         {{ errorMessage }}

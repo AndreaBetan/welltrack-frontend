@@ -1,4 +1,5 @@
 <script setup>
+import { parseLocalDate, toLocalDateValue } from "@/utils/dateUtils";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { icons } from "@/icons";
 
@@ -12,6 +13,7 @@ const props = defineProps({
   max: { type: String, default: null },
   required: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  clearable: { type: Boolean, default: false },
 });
 
 const model = defineModel({ type: String, default: "" });
@@ -21,22 +23,9 @@ const calendar = ref(null);
 const isOpen = ref(false);
 const calendarPosition = ref({ top: "0px", left: "0px", width: "19rem" });
 
-const parseDate = (value) => {
-  if (!value) return null;
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const toDateValue = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const selectedDate = computed(() => parseDate(model.value));
+const selectedDate = computed(() => model.value ? parseLocalDate(model.value) : null);
 const visibleMonth = ref(selectedDate.value ?? new Date());
-const todayValue = toDateValue(new Date());
+const todayValue = toLocalDateValue(new Date());
 
 const formattedDate = computed(() => {
   if (!selectedDate.value) return props.placeholder;
@@ -65,7 +54,7 @@ const calendarDays = computed(() => {
   return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(calendarStart);
     date.setDate(calendarStart.getDate() + index);
-    const value = toDateValue(date);
+    const value = toLocalDateValue(date);
 
     return {
       date,
@@ -151,7 +140,7 @@ const handleEscape = (event) => {
 };
 
 watch(model, (value) => {
-  if (value) visibleMonth.value = parseDate(value);
+  if (value) visibleMonth.value = parseLocalDate(value);
 });
 
 onMounted(() => {
@@ -190,13 +179,27 @@ onBeforeUnmount(() => {
         <component :is="icons.common.date" aria-hidden="true" class="size-4 shrink-0" />
       </button>
 
+      <button
+        v-if="clearable && model && !required"
+        type="button"
+        :disabled="disabled"
+        class="mt-1 text-xs underline disabled:opacity-50"
+        @click="model = ''"
+      >
+        Borrar fecha
+      </button>
+
       <input
-        v-if="required"
+        v-if="required || model"
         v-model="model"
+        type="date"
+        :min="min"
+        :max="max"
+        :disabled="disabled"
         aria-hidden="true"
         class="pointer-events-none absolute bottom-0 left-1/2 size-px opacity-0"
         tabindex="-1"
-        required
+        :required="required"
       />
 
       <Teleport to="body">

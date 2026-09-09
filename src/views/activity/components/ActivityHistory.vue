@@ -1,11 +1,12 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { Select } from "@/components/forms";
+import { useHistoryFilter } from "@/composables/useHistoryFilter";
+import { computed, watch } from "vue";
 import { icons } from "@/icons";
 import DataTable from "@/components/data/DataTable.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
 import LoadingState from "@/components/ui/LoadingState.vue";
-import { Select } from "@/components/forms";
-import { parseLocalDate } from "@/utils/dateUtils";
+import { formatDate } from "@/utils/dateUtils";
 
 defineOptions({ name: "ActivityHistory" });
 
@@ -16,8 +17,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["edit", "delete"]);
-const activityFilter = ref("all");
-const periodFilter = ref("7");
+const {
+  typeFilter: activityFilter,
+  periodFilter,
+  filteredEntries,
+} = useHistoryFilter(() => props.entries, "activity_type");
 
 const intensityLabels = {
   low: "Baja",
@@ -48,27 +52,6 @@ const activityFilterOptions = computed(() => {
   return [{ value: "all", label: "Todas las actividades" }, ...options];
 });
 
-const filteredEntries = computed(() => {
-  let minimumDate = null;
-  if (periodFilter.value !== "all") {
-    minimumDate = new Date();
-    minimumDate.setHours(0, 0, 0, 0);
-    minimumDate.setDate(minimumDate.getDate() - Number(periodFilter.value) + 1);
-  }
-
-  return props.entries.filter((entry) => {
-    const matchesActivity =
-      activityFilter.value === "all" || entry.activity_type === activityFilter.value;
-    const matchesPeriod = !minimumDate || parseLocalDate(entry.log_date) >= minimumDate;
-    return matchesActivity && matchesPeriod;
-  });
-});
-
-const formatLogDate = (value) =>
-  new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" })
-    .format(parseLocalDate(value))
-    .replace(" de ", " ");
-
 const intensityClass = (value) =>
   ({
     low: "bg-emerald-50 text-emerald-700",
@@ -95,7 +78,7 @@ watch(activityFilterOptions, (options) => {
         <h2 class="text-xl font-extrabold">Historial de actividades</h2>
       </div>
       <div
-        class="grid min-w-/[430px/] grid-cols-2 gap-2 max-[520px]:w-full max-[520px]:min-w-0 max-[520px]:grid-cols-1"
+        class="grid min-w-[430px] grid-cols-2 gap-2 max-[520px]:w-full max-[520px]:min-w-0 max-[520px]:grid-cols-1"
       >
         <Select
           id="activity-filter"
@@ -120,7 +103,7 @@ watch(activityFilterOptions, (options) => {
       :max-rows="5"
       min-width="930px"
     >
-      <template #cell-log_date="{ value }">{{ formatLogDate(value) }}</template>
+      <template #cell-log_date="{ value }">{{ formatDate(value) }}</template>
       <template #cell-activity_type="{ row }">
         <div class="flex items-center gap-3">
           <span class="grid size-9 place-items-center rounded-full bg-[#f8f2ed] text-[#8f6558]">

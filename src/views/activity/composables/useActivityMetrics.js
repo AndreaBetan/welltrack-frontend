@@ -1,3 +1,4 @@
+import { formatMinutes } from "@/utils/durationUtils";
 import { computed, toValue } from "vue";
 import { parseLocalDate } from "@/utils/dateUtils";
 
@@ -22,17 +23,13 @@ export const useActivityMetrics = (entries) => {
       (total, entry) => total + Number(entry.duration_minutes || 0),
       0,
     );
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
 
     return {
       sessions: weekEntries.length,
       calories,
       minutes,
       averageCalories: weekEntries.length ? Math.round(calories / weekEntries.length) : 0,
-      formattedTime: hours
-        ? `${hours}h ${remainingMinutes ? `${remainingMinutes}m` : ""}`.trim()
-        : `${remainingMinutes} min`,
+      formattedTime: formatMinutes(minutes),
     };
   });
 

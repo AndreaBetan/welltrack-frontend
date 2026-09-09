@@ -89,9 +89,10 @@ La compilación de producción se genera en `dist/`. Esta carpeta está excluida
 src/
 ├── assets/       # Estilos y recursos estáticos
 ├── components/   # Componentes reutilizables de interfaz
+├── composables/  # Lógica reactiva compartida de formularios e historiales
 ├── icons/        # Catálogo centralizado de iconos
 ├── router/       # Rutas y protección de vistas privadas
-├── services/     # Comunicación HTTP y almacenamiento local
+├── services/     # Comunicación HTTP
 ├── stores/       # Estado global con Pinia
 ├── utils/        # Funciones auxiliares compartidas
 └── views/        # Vistas organizadas por funcionalidad

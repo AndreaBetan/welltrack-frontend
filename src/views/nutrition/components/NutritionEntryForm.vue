@@ -1,6 +1,8 @@
 <script setup>
-import { computed, reactive, watch } from "vue";
 import { DatePicker } from "@/components/forms";
+import { todayLocalDate } from "@/utils/dateUtils";
+import { round } from "@/utils/numberUtils";
+import { computed, reactive, watch } from "vue";
 import { icons } from "@/icons";
 import { useNutritionStore } from "@/stores/nutritionStore";
 import { useToastStore } from "@/stores/toastStore";
@@ -13,21 +15,12 @@ const emit = defineEmits(["saved", "cancel"]);
 const nutritionStore = useNutritionStore();
 const toastStore = useToastStore();
 
-const localDate = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
 const form = reactive({
   meal_type: props.mealType,
   serving_grams: 100,
   description: "",
-  log_date: localDate(),
+  log_date: todayLocalDate(),
 });
-const round = (value) => Math.round(value * 10) / 10;
 
 const hasRequiredNutrition = computed(() =>
   ["calories100g", "protein100g", "carbs100g", "fat100g"].every((field) =>
@@ -157,7 +150,7 @@ const handleSubmit = async () => {
         id="nutrition-log-date"
         v-model="form.log_date"
         label="Fecha"
-        :max="localDate()"
+        :max="todayLocalDate()"
         required
       />
       <label class="grid min-w-0 gap-2 text-sm font-semibold text-[#573e33]/75">

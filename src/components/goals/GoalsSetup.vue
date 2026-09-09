@@ -1,4 +1,6 @@
 <script setup>
+import { DatePicker, FormField } from "@/components/forms";
+import { toLocalDateValue } from "@/utils/dateUtils";
 import { computed, reactive, ref } from "vue";
 import MacroDistributionFields from "@/components/goals/MacroDistributionFields.vue";
 import { icons } from "@/icons";
@@ -17,13 +19,6 @@ const macroDistribution = ref({
   protein_percentage: 20,
   fat_percentage: 30,
 });
-
-const formatLocalDate = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
 
 const startDate = new Date();
 const defaultEndDate = new Date();
@@ -75,8 +70,8 @@ const options = reactive([
 ]);
 
 const dates = reactive({
-  startDate: formatLocalDate(startDate),
-  endDate: formatLocalDate(defaultEndDate),
+  startDate: toLocalDateValue(startDate),
+  endDate: toLocalDateValue(defaultEndDate),
 });
 
 const activeGoalTypes = computed(
@@ -207,25 +202,16 @@ const handleSubmit = async () => {
                 {{ option.description }}
               </p>
 
-              <label
-                v-if="option.selected"
-                class="mt-4 grid gap-2 text-left text-sm font-semibold"
-                @click.stop
-              >
-                Mi objetivo
-                <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                  <input
-                    v-model="option.value"
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    required
-                    class="h-10 w-full min-w-0 max-w-full rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
-                    @click.stop
-                  />
-                  <span class="shrink-0 text-xs">{{ option.unit }}</span>
-                </div>
-              </label>
+              <div v-if="option.selected" class="mt-4 text-left" @click.stop @keydown.stop>
+                <FormField
+                  :id="`goal-${option.type}-value`"
+                  v-model="option.value"
+                  :label="`Mi objetivo (${option.unit})`"
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                />
+              </div>
 
               <MacroDistributionFields
                 v-if="option.type === 'daily_calories' && option.selected"
@@ -248,28 +234,20 @@ const handleSubmit = async () => {
         v-if="selectedOptions.length"
         class="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1 min-[1100px]:col-start-2"
       >
-        <label class="grid gap-2 text-sm font-semibold">
-          Fecha de inicio
-          <input
-            v-model="dates.startDate"
-            type="date"
-            required
-            class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
-          />
-        </label>
-
-        <label class="grid gap-2 text-sm font-semibold">
-          Fecha de finalización
-          <input
-            v-model="dates.endDate"
-            type="date"
-            :min="dates.startDate"
-            required
-            class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33]"
-          />
-        </label>
+        <DatePicker
+          id="goal-start-date"
+          v-model="dates.startDate"
+          label="Fecha de inicio"
+          required
+        />
+        <DatePicker
+          id="goal-end-date"
+          v-model="dates.endDate"
+          label="Fecha de finalización"
+          :min="dates.startDate"
+          required
+        />
       </div>
-
     </form>
   </section>
 </template>

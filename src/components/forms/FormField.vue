@@ -1,6 +1,8 @@
 <script setup>
 import { icons } from "@/icons";
 
+defineOptions({ inheritAttrs: false });
+
 defineProps({
   id: { type: String, required: true },
   label: { type: String, required: true },
@@ -10,6 +12,8 @@ defineProps({
   step: { type: [String, Number], default: null },
   autocomplete: { type: String, default: "" },
   required: { type: Boolean, default: true },
+  disabled: { type: Boolean, default: false },
+  maxlength: { type: [String, Number], default: null },
   help: { type: String, default: "" },
 });
 
@@ -17,7 +21,7 @@ const model = defineModel({ type: [String, Number], default: "" });
 </script>
 
 <template>
-  <div class="grid min-w-0 gap-2 text-sm font-semibold text-[#573e33]/75">
+  <div class="grid min-w-0 gap-2 text-sm font-semibold text-[#573e33]/75" :class="$attrs.class" :style="$attrs.style">
     <div class="flex items-center gap-1.5">
       <label :for="id">{{ label }}</label>
       <span v-if="help" class="group relative inline-flex">
@@ -39,6 +43,7 @@ const model = defineModel({ type: [String, Number], default: "" });
       </span>
     </div>
     <input
+      v-bind="{ ...$attrs, class: undefined, style: undefined }"
       :id="id"
       v-model="model"
       :type="type"
@@ -47,7 +52,9 @@ const model = defineModel({ type: [String, Number], default: "" });
       :step="step"
       :autocomplete="autocomplete"
       :required="required"
-      class="block h-11 w-full min-w-0 rounded-lg border border-[#b98a81]/35 bg-white px-3 text-[#573e33] outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
+      :disabled="disabled"
+      :maxlength="maxlength"
+      class="block h-11 w-full min-w-0 rounded-lg border border-[#b98a81]/35 bg-white px-3 text-[#573e33] outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15 disabled:cursor-not-allowed disabled:opacity-60"
       :class="type === 'time' ? 'appearance-none' : ''"
     />
   </div>

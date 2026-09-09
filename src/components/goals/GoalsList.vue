@@ -1,4 +1,6 @@
 <script setup>
+import { DatePicker, FormField, Select } from "@/components/forms";
+import { toDateOnlyValue, formatDate } from "@/utils/dateUtils";
 import { computed, reactive, ref } from "vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
@@ -75,11 +77,15 @@ const goalStyles = {
   },
 };
 
+const goalTypeOptions = Object.entries(goalLabels).map(([value, label]) => ({ value, label }));
+
+const goalStatusOptions = Object.entries(statusLabels).map(([value, label]) => ({ value, label }));
+
 const activeGoals = computed(() => goalStore.goals.filter((goal) => goal.status === "active"));
 const historicalGoals = computed(() =>
   goalStore.goals
     .filter((goal) => ["completed", "cancelled"].includes(goal.status))
-    .sort((first, second) => normalizeDate(second.end_date).localeCompare(normalizeDate(first.end_date))),
+    .sort((first, second) => toDateOnlyValue(second.end_date).localeCompare(toDateOnlyValue(first.end_date))),
 );
 
 const historyColumns = [
@@ -89,12 +95,6 @@ const historyColumns = [
   { key: "end_date", label: "Fecha final" },
 ];
 
-const normalizeDate = (date) => String(date).slice(0, 10);
-const formatDate = (date) =>
-  new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" })
-    .format(new Date(`${normalizeDate(date)}T00:00:00`))
-    .replace(" de ", " ");
-
 const startEditing = async (goal) => {
   // Se copia la tarjeta al formulario para no modificar el store antes de que
   // el backend confirme el PATCH.
@@ -102,8 +102,8 @@ const startEditing = async (goal) => {
   Object.assign(editForm, {
     goal_type: goal.goal_type,
     target_value: Number(goal.target_value),
-    start_date: normalizeDate(goal.start_date),
-    end_date: normalizeDate(goal.end_date),
+    start_date: toDateOnlyValue(goal.start_date),
+    end_date: toDateOnlyValue(goal.end_date),
     status: goal.status,
   });
 
@@ -197,8 +197,8 @@ const completeGoal = async (goal) => {
     await goalStore.updateGoal(goal.id, {
       goal_type: goal.goal_type,
       target_value: Number(goal.target_value),
-      start_date: normalizeDate(goal.start_date),
-      end_date: normalizeDate(goal.end_date),
+      start_date: toDateOnlyValue(goal.start_date),
+      end_date: toDateOnlyValue(goal.end_date),
       status: "completed",
     });
     toastStore.notify("Objetivo completado");
@@ -293,7 +293,7 @@ const removeGoal = async () => {
     <template #cell-end_date="{ value }">
       <span class="inline-flex items-center gap-2 whitespace-nowrap">
         <component :is="icons.common.date" class="size-4" aria-hidden="true" />
-        {{ formatDate(value) }}
+        {{ formatDate(toDateOnlyValue(value)) }}
       </span>
     </template>
   </DataTable>
@@ -312,7 +312,7 @@ const removeGoal = async () => {
     <BaseCard
       v-for="goal in activeGoals"
       :key="goal.id"
-      class="border-l-2 `p-4!`"
+      class="border-l-2 p-4!"
       :class="goalStyles[goal.goal_type]?.accent"
     >
       <div class="flex gap-4">
@@ -339,8 +339,8 @@ const removeGoal = async () => {
             {{ unitLabels[goal.goal_type] ?? "" }}</strong
           >
           <p class="mt-1.5 flex items-center gap-2 text-xs text-[#573e33]/55">
-            <component :is="icons.common.date" class="size-4" />{{ formatDate(goal.start_date) }}
-            <span>—</span> {{ formatDate(goal.end_date) }}
+            <component :is="icons.common.date" class="size-4" />{{ formatDate(toDateOnlyValue(goal.start_date)) }}
+            <span>—</span> {{ formatDate(toDateOnlyValue(goal.end_date)) }}
           </p>
         </div>
       </div>
@@ -388,48 +388,39 @@ const removeGoal = async () => {
       class="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1"
       @submit.prevent="saveGoal(editingGoalId)"
     >
-      <label class="grid gap-2 text-sm font-semibold"
-        >Tipo de objetivo<select
-          v-model="editForm.goal_type"
-          class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3"
-        >
-          <option v-for="(label, type) in goalLabels" :key="type" :value="type">{{ label }}</option>
-        </select></label
-      >
-      <label class="grid gap-2 text-sm font-semibold"
-        >Valor objetivo<input
-          v-model="editForm.target_value"
-          type="number"
-          min="0.1"
-          step="0.1"
-          required
-          class="h-11 rounded-lg border border-[#b98a81]/35 px-3"
-      /></label>
-      <label class="grid gap-2 text-sm font-semibold"
-        >Fecha de inicio<input
-          v-model="editForm.start_date"
-          type="date"
-          required
-          class="h-11 rounded-lg border border-[#b98a81]/35 px-3"
-      /></label>
-      <label class="grid gap-2 text-sm font-semibold"
-        >Fecha final<input
-          v-model="editForm.end_date"
-          type="date"
-          :min="editForm.start_date"
-          required
-          class="h-11 rounded-lg border border-[#b98a81]/35 px-3"
-      /></label>
-      <label class="grid gap-2 text-sm font-semibold"
-        >Estado<select
-          v-model="editForm.status"
-          class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3"
-        >
-          <option v-for="(label, status) in statusLabels" :key="status" :value="status">
-            {{ label }}
-          </option>
-        </select></label
-      >
+      <Select
+        id="edit-goal-type"
+        v-model="editForm.goal_type"
+        label="Tipo de objetivo"
+        :options="goalTypeOptions"
+      />
+      <FormField
+        id="edit-goal-value"
+        v-model="editForm.target_value"
+        label="Valor objetivo"
+        type="number"
+        min="0.1"
+        step="0.1"
+      />
+      <DatePicker
+        id="edit-goal-start"
+        v-model="editForm.start_date"
+        label="Fecha de inicio"
+        required
+      />
+      <DatePicker
+        id="edit-goal-end"
+        v-model="editForm.end_date"
+        label="Fecha final"
+        :min="editForm.start_date"
+        required
+      />
+      <Select
+        id="edit-goal-status"
+        v-model="editForm.status"
+        label="Estado"
+        :options="goalStatusOptions"
+      />
       <div
         v-if="editForm.goal_type === 'daily_calories'"
         class="col-span-2 grid gap-3 max-[640px]:col-span-1"

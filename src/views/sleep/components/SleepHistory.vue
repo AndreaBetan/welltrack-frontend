@@ -1,11 +1,11 @@
 <script setup>
-import { computed, ref } from "vue";
-import DataTable from "@/components/data/DataTable.vue";
 import { Select } from "@/components/forms";
+import { useHistoryFilter } from "@/composables/useHistoryFilter";
+import DataTable from "@/components/data/DataTable.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
 import LoadingState from "@/components/ui/LoadingState.vue";
 import { icons } from "@/icons";
-import { parseLocalDate } from "@/utils/dateUtils";
+import { formatDate, formatTime } from "@/utils/dateUtils";
 import { formatMinutes } from "@/utils/durationUtils";
 
 const props = defineProps({
@@ -13,14 +13,14 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 });
 const emit = defineEmits(["edit", "delete"]);
-const sleepTypeFilter = ref("all");
-const periodFilter = ref("7");
+const { typeFilter: sleepTypeFilter, periodFilter, filteredEntries } = useHistoryFilter(() => props.entries, "sleep_type");
 
 const sleepTypeOptions = [
   { value: "all", label: "Todos los descansos" },
   { value: "night", label: "Sueño nocturno" },
   { value: "nap", label: "Siestas" },
 ];
+
 const periodOptions = [
   { value: "7", label: "Últimos 7 días" },
   { value: "30", label: "Últimos 30 días" },
@@ -35,32 +35,8 @@ const columns = [
   { key: "sleep_quality", label: "Calidad" },
   { key: "awakenings_count", label: "Despertares" },
 ];
-const qualityLabels = ["", "Muy mala", "Mala", "Regular", "Buena", "Muy buena"];
-const filteredEntries = computed(() => {
-  let minimumDate = null;
-  if (periodFilter.value !== "all") {
-    minimumDate = new Date();
-    minimumDate.setHours(0, 0, 0, 0);
-    minimumDate.setDate(minimumDate.getDate() - Number(periodFilter.value) + 1);
-  }
 
-  return props.entries.filter((entry) => {
-    const matchesType =
-      sleepTypeFilter.value === "all" || entry.sleep_type === sleepTypeFilter.value;
-    const matchesPeriod = !minimumDate || parseLocalDate(entry.log_date) >= minimumDate;
-    return matchesType && matchesPeriod;
-  });
-});
-const formatTime = (value) =>
-  value
-    ? new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" }).format(
-        new Date(value),
-      )
-    : "—";
-const formatDate = (value) =>
-  new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" })
-    .format(parseLocalDate(value))
-    .replace(" de ", " ");
+const qualityLabels = ["", "Muy mala", "Mala", "Regular", "Buena", "Muy buena"];
 </script>
 
 <template>

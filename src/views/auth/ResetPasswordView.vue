@@ -1,4 +1,5 @@
 <script setup>
+import { FormField } from "@/components/forms";
 import { computed, onMounted, reactive, ref } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import AuthLayout from "@/components/auth/AuthLayout.vue";
@@ -88,9 +89,9 @@ const handleSubmit = async () => {
     </div>
 
     <form v-else class="mt-8 grid gap-4" @submit.prevent="handleSubmit">
-      <label class="grid gap-2 text-sm font-semibold text-[#573e33]/75" for="reset-password">
-        Nueva contraseña
-        <input
+      <div class="grid gap-2">
+        <FormField
+          label="Nueva contraseña"
           id="reset-password"
           v-model="form.password"
           type="password"
@@ -99,25 +100,20 @@ const handleSubmit = async () => {
           required
           :aria-invalid="Boolean(errorMessage)"
           :aria-describedby="errorMessage ? 'reset-error' : 'password-help'"
-          class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 text-[#573e33] outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-        />
-        <span id="password-help" class="text-xs font-normal">Mínimo 8 caracteres.</span>
-      </label>
+        /><span id="password-help" class="text-xs font-normal">Mínimo 8 caracteres.</span>
+      </div>
 
-      <label class="grid gap-2 text-sm font-semibold text-[#573e33]/75" for="confirm-password">
-        Confirmar nueva contraseña
-        <input
-          id="confirm-password"
-          v-model="form.confirmPassword"
-          type="password"
-          autocomplete="new-password"
-          minlength="8"
-          required
-          :aria-invalid="Boolean(errorMessage)"
-          :aria-describedby="errorMessage ? 'reset-error' : undefined"
-          class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 text-[#573e33] outline-none transition focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-        />
-      </label>
+      <FormField
+        label="Confirmar nueva contraseña"
+        id="confirm-password"
+        v-model="form.confirmPassword"
+        type="password"
+        autocomplete="new-password"
+        minlength="8"
+        required
+        :aria-invalid="Boolean(errorMessage)"
+        :aria-describedby="errorMessage ? 'reset-error' : undefined"
+      />
 
       <p v-if="errorMessage" id="reset-error" class="text-sm text-red-700" role="alert">
         {{ errorMessage }}

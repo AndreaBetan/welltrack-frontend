@@ -1,4 +1,5 @@
 <script setup>
+import { FormField } from "@/components/forms";
 import { reactive } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import AuthLayout from "@/components/auth/AuthLayout.vue";
@@ -12,7 +13,7 @@ const form = reactive({ name: "", email: "", password: "", confirmPassword: "" }
 
 const handleSubmit = async () => {
   if (form.password !== form.confirmPassword) {
-    toastStore.notify("Las contrasenas no coinciden", "error");
+    toastStore.notify("Las contraseñas no coinciden", "error");
     return;
   }
   try {
@@ -34,45 +35,45 @@ const handleSubmit = async () => {
 <template>
   <AuthLayout title="Crear cuenta">
     <form class="mt-8 grid gap-4" @submit.prevent="handleSubmit">
-            <input
-              v-model="form.name"
-              type="text"
-              autocomplete="name"
-              required
-              placeholder="Nombre"
-              class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-            />
-            <input
-              v-model="form.email"
-              type="email"
-              autocomplete="email"
-              required
-              placeholder="Correo electronico"
-              class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-            />
-            <input
-              v-model="form.password"
-              type="password"
-              autocomplete="new-password"
-              required
-              placeholder="Contrasena"
-              class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-            />
-            <input
-              v-model="form.confirmPassword"
-              type="password"
-              autocomplete="new-password"
-              required
-              placeholder="Confirmar contrasena"
-              class="h-11 rounded-lg border border-[#b98a81]/35 bg-white px-3 outline-none focus:border-[#573e33] focus:ring-4 focus:ring-[#b98a81]/15"
-            />
-            <button
-              type="submit"
-              :disabled="authStore.isLoading"
-              class="mt-2 h-11 rounded-lg bg-[#573e33] font-bold text-white transition hover:bg-[#6d4d40] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {{ authStore.isLoading ? "Creando cuenta..." : "Registrarme" }}
-            </button>
+      <FormField
+        id="register-name"
+        label="Nombre"
+        v-model="form.name"
+        type="text"
+        autocomplete="name"
+        required
+      />
+      <FormField
+        id="register-email"
+        label="Correo electrónico"
+        v-model="form.email"
+        type="email"
+        autocomplete="email"
+        required
+      />
+      <FormField
+        id="register-password"
+        label="Contraseña"
+        v-model="form.password"
+        type="password"
+        autocomplete="new-password"
+        required
+      />
+      <FormField
+        id="register-confirmPassword"
+        label="Confirmar contraseña"
+        v-model="form.confirmPassword"
+        type="password"
+        autocomplete="new-password"
+        required
+      />
+      <button
+        type="submit"
+        :disabled="authStore.isLoading"
+        class="mt-2 h-11 rounded-lg bg-[#573e33] font-bold text-white transition hover:bg-[#6d4d40] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {{ authStore.isLoading ? "Creando cuenta..." : "Registrarme" }}
+      </button>
     </form>
 
     <p class="mt-6 text-center text-sm text-[#573e33]/70">
