@@ -75,7 +75,7 @@ const formatDate = (value) =>
         <h2 class="text-xl font-extrabold">Historial de sueño</h2>
       </div>
       <div
-        class="grid min-w-\[430px\] grid-cols-2 gap-2 max-[520px]:w-full max-[520px]:min-w-0 max-[520px]:grid-cols-1"
+        class="grid min-w-[430px] grid-cols-2 gap-2 max-[520px]:w-full max-[520px]:min-w-0 max-[520px]:grid-cols-1"
       >
         <Select
           id="sleep-type-filter"

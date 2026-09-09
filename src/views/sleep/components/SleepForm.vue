@@ -72,11 +72,13 @@ const toggleFactor = (code) => {
       <FormField :id="`${idPrefix}-latency`" v-model="fields.sleep_latency_minutes.value" label="Tiempo para dormir (min)" help="Indica aproximadamente cuántos minutos tardaste en quedarte dormido." type="number" min="0" max="1440" />
       <FormField :id="`${idPrefix}-awakenings`" v-model="fields.awakenings_count.value" label="Número de despertares" type="number" min="0" />
 
-      <fieldset class="col-span-4 grid gap-2 max-[1050px]:col-span-2 max-[640px]:col-span-1">
+      <fieldset
+        class="col-span-4 grid min-w-0 max-w-full gap-2 max-[1050px]:col-span-2 max-[640px]:col-span-1"
+      >
         <legend class="text-sm font-semibold text-[#573e33]/75">Factores que afectaron al sueño</legend>
         <p v-if="factorsLoading" class="text-sm text-[#573e33]/50">Cargando factores...</p>
-        <div v-else class="flex flex-wrap gap-2">
-          <button v-for="factor in factors" :key="factor.id" type="button" class="rounded-full border px-4 py-2 text-sm font-semibold transition" :class="model.factors.includes(factor.code) ? 'border-[#573e33] bg-[#573e33] text-white' : 'border-[#b98a81]/35 hover:bg-[#f7f1ec]'" @click="toggleFactor(factor.code)">{{ factor.name }}</button>
+        <div v-else class="flex min-w-0 max-w-full flex-wrap gap-2">
+          <button v-for="factor in factors" :key="factor.id" type="button" class="max-w-full break-words rounded-full border px-4 py-2 text-sm font-semibold whitespace-normal transition" :class="model.factors.includes(factor.code) ? 'border-[#573e33] bg-[#573e33] text-white' : 'border-[#b98a81]/35 hover:bg-[#f7f1ec]'" @click="toggleFactor(factor.code)">{{ factor.name }}</button>
         </div>
       </fieldset>
 
