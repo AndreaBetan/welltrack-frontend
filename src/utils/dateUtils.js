@@ -22,3 +22,25 @@ export const parseLocalDate = (value) => {
   const [year, month, day] = normalizedDate.split("-").map(Number);
   return new Date(year, month - 1, day);
 };
+
+export const addDays = (value, amount) => {
+  const date = parseLocalDate(value);
+  date.setDate(date.getDate() + amount);
+  return toLocalDateValue(date);
+};
+
+export const formatDate = (value) => {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(parseLocalDate(value)).replace(" de ", " ");
+};
+
+export const formatTime = (value) =>
+  value
+    ? new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" }).format(new Date(value))
+    : "—";
+
+export const toDateOnlyValue = (value) => value ? String(value).slice(0, 10) : "";

@@ -1,6 +1,6 @@
 <script setup>
+import { DatePicker } from "@/components/forms";
 import { computed, onMounted, ref } from "vue";
-import DatePicker from "@/components/forms/DatePicker.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
 import LoadingState from "@/components/ui/LoadingState.vue";
 import PageHeader from "@/components/ui/PageHeader.vue";
@@ -9,28 +9,16 @@ import { useToastStore } from "@/stores/toastStore";
 import RecommendationCard from "./components/RecommendationCard.vue";
 import RecommendationResourceCard from "./components/RecommendationResourceCard.vue";
 import { icons } from "@/icons";
-import { todayLocalDate } from "@/utils/dateUtils";
+import { todayLocalDate, formatDate } from "@/utils/dateUtils";
 
 const recommendationStore = useRecommendationStore();
 const toastStore = useToastStore();
 const analysisDate = ref(todayLocalDate());
 
-const formatPeriodDate = (value) => {
-  if (!value) return "";
-
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-    .format(new Date(`${value}T12:00:00`))
-    .replace(" de ", " ");
-};
-
 const analysisPeriod = computed(() => {
   const period = recommendationStore.period;
   if (!period?.from || !period?.to) return "";
-  return `${formatPeriodDate(period.from)} – ${formatPeriodDate(period.to)}`;
+  return `${formatDate(period.from)} – ${formatDate(period.to)}`;
 });
 
 const resources = computed(() => {

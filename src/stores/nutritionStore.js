@@ -1,30 +1,24 @@
+import { round } from "@/utils/numberUtils";
+import { todayLocalDate, toDateOnlyValue } from "@/utils/dateUtils";
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { apiRequest } from "@/services/apiService";
-
-const localDate = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
 
 export const useNutritionStore = defineStore("nutrition", () => {
   const entries = ref([]);
   const isLoading = ref(false);
 
   const todayEntries = computed(() =>
-    entries.value.filter((entry) => String(entry.log_date).slice(0, 10) === localDate()),
+    entries.value.filter((entry) => toDateOnlyValue(entry.log_date) === todayLocalDate()),
   );
 
   const sumToday = (field) =>
     todayEntries.value.reduce((total, entry) => total + Number(entry[field] || 0), 0);
 
-  const totalCaloriesToday = computed(() => Math.round(sumToday("calories") * 10) / 10);
-  const totalProteinToday = computed(() => Math.round(sumToday("protein") * 10) / 10);
-  const totalCarbsToday = computed(() => Math.round(sumToday("carbs") * 10) / 10);
-  const totalFatToday = computed(() => Math.round(sumToday("fat") * 10) / 10);
+  const totalCaloriesToday = computed(() => round(sumToday("calories")));
+  const totalProteinToday = computed(() => round(sumToday("protein")));
+  const totalCarbsToday = computed(() => round(sumToday("carbs")));
+  const totalFatToday = computed(() => round(sumToday("fat")));
 
   const loadEntries = async (filters = {}) => {
     isLoading.value = true;

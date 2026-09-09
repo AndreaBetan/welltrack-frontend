@@ -1,15 +1,16 @@
 <script setup>
+import { DatePicker, Select } from "@/components/forms";
+import { round } from "@/utils/numberUtils";
 import { computed, onMounted, ref, watch } from "vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
 import LoadingState from "@/components/ui/LoadingState.vue";
 import PageHeader from "@/components/ui/PageHeader.vue";
 import SummaryCard from "@/components/ui/SummaryCard.vue";
-import { DatePicker, Select } from "@/components/forms";
 import { icons } from "@/icons";
 import { useStatisticsStore } from "@/stores/statisticsStore";
 import { useToastStore } from "@/stores/toastStore";
-import { todayLocalDate } from "@/utils/dateUtils";
+import { todayLocalDate, addDays } from "@/utils/dateUtils";
 
 const statisticsStore = useStatisticsStore();
 const toastStore = useToastStore();
@@ -22,22 +23,9 @@ const periodOptions = [
   { value: "90", label: "Últimos 90 días" },
 ];
 
-const addDays = (value, amount) => {
-  const date = new Date(`${value}T12:00:00`);
-  date.setDate(date.getDate() + amount);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
 const from = computed(() => addDays(to.value, -(Number(period.value) - 1)));
 const summary = computed(() => statisticsStore.summary ?? {});
 const trends = computed(() => statisticsStore.trends ?? {});
-const round = (value, decimals = 1) => {
-  const factor = 10 ** decimals;
-  return Math.round(Number(value || 0) * factor) / factor;
-};
 
 const summaryCards = computed(() => [
   {

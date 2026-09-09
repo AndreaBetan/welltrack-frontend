@@ -1,16 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { apiRequest } from "@/services/apiService";
-import { toLocalDateValue } from "@/utils/dateUtils";
-
-// Se construye la fecha local para evitar que UTC cambie el día del registro.
-const today = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+import { toLocalDateValue, todayLocalDate } from "@/utils/dateUtils";
 
 export const useActivityStore = defineStore("activity", () => {
   const entries = ref([]);
@@ -24,7 +15,7 @@ export const useActivityStore = defineStore("activity", () => {
   );
 
   const todayEntries = computed(() =>
-    entries.value.filter((entry) => toLocalDateValue(entry.log_date) === today()),
+    entries.value.filter((entry) => toLocalDateValue(entry.log_date) === todayLocalDate()),
   );
   const minutesToday = computed(() =>
     todayEntries.value.reduce((total, entry) => total + Number(entry.duration_minutes), 0),
