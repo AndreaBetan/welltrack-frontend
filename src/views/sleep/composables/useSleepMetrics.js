@@ -1,3 +1,4 @@
+import { round } from "@/utils/numberUtils";
 import { computed, toValue } from "vue";
 
 export const useSleepMetrics = (entries) => {
@@ -9,7 +10,7 @@ export const useSleepMetrics = (entries) => {
       (sum, entry) => sum + Number(entry.duration_minutes || 0),
       0,
     );
-    return Math.round(total / currentEntries.length);
+    return round(total / currentEntries.length, 0);
   });
 
   return { averageDuration };

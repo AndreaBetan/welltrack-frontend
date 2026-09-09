@@ -1,3 +1,4 @@
+import { round } from "@/utils/numberUtils";
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { apiRequest } from "@/services/apiService";
@@ -15,12 +16,12 @@ export const useSleepStore = defineStore("sleep", () => {
 
   const lastEntry = computed(() => entries.value[0] ?? null);
   const lastSleepHours = computed(() =>
-    lastEntry.value ? Math.round((Number(lastEntry.value.duration_minutes) / 60) * 10) / 10 : 0,
+    lastEntry.value ? round(Number(lastEntry.value.duration_minutes) / 60) : 0,
   );
   const averageQuality = computed(() => {
     if (!entries.value.length) return 0;
     const total = entries.value.reduce((sum, entry) => sum + Number(entry.sleep_quality), 0);
-    return Math.round((total / entries.value.length) * 10) / 10;
+    return round(total / entries.value.length);
   });
 
   const loadEntries = async (filters = {}) => {

@@ -1,10 +1,11 @@
 <script setup>
+import { DatePicker } from "@/components/forms";
+import { round } from "@/utils/numberUtils";
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import PageHeader from "@/components/ui/PageHeader.vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
 import LoadingState from "@/components/ui/LoadingState.vue";
-import { DatePicker } from "@/components/forms";
 import { icons } from "@/icons";
 import { useAuthStore } from "@/stores/authStore";
 import { useDashboardStore } from "@/stores/dashboardStore";
@@ -17,7 +18,6 @@ const toastStore = useToastStore();
 const selectedDate = ref(todayLocalDate());
 const data = computed(() => dashboardStore.snapshot ?? {});
 const firstName = computed(() => authStore.user?.name?.trim().split(/\s+/)[0] || "");
-const round = (value) => Math.round(Number(value || 0) * 10) / 10;
 const percent = (value, target) =>
   target > 0 ? Math.round((Number(value || 0) / target) * 100) : 0;
 const goal = (type) => data.value.active_goals?.find((item) => item.goal_type === type);

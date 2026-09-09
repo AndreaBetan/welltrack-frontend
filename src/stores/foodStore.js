@@ -1,10 +1,7 @@
+import { round, roundNullable } from "@/utils/numberUtils";
 import { ref } from "vue";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { apiRequest } from "@/services/apiService";
-
-const round = (value) => Math.round(Number(value || 0) * 10) / 10;
-const roundNullable = (value) =>
-  value == null || value === "" || !Number.isFinite(Number(value)) ? null : round(value);
 
 const normalizePortions = (portions = []) =>
   portions
