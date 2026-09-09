@@ -14,6 +14,7 @@ const props = defineProps({
   required: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
   clearable: { type: Boolean, default: false },
+  yearSelect: { type: Boolean, default: false },
 });
 
 const model = defineModel({ type: String, default: "" });
@@ -23,9 +24,17 @@ const calendar = ref(null);
 const isOpen = ref(false);
 const calendarPosition = ref({ top: "0px", left: "0px", width: "19rem" });
 
-const selectedDate = computed(() => model.value ? parseLocalDate(model.value) : null);
+const selectedDate = computed(() => (model.value ? parseLocalDate(model.value) : null));
 const visibleMonth = ref(selectedDate.value ?? new Date());
 const todayValue = toLocalDateValue(new Date());
+
+const currentYear = new Date().getFullYear();
+
+const years = Array.from({ length: 120 }, (_, index) => currentYear - index);
+
+const changeYear = (event) => {
+  visibleMonth.value = new Date(Number(event.target.value), visibleMonth.value.getMonth(), 1);
+};
 
 const formattedDate = computed(() => {
   if (!selectedDate.value) return props.placeholder;
@@ -211,66 +220,93 @@ onBeforeUnmount(() => {
           role="dialog"
           aria-label="Seleccionar fecha"
         >
-        <header class="mb-4 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            aria-label="Mes anterior"
-            class="grid size-9 place-items-center rounded-lg transition hover:bg-[#f7f1ec]"
-            @click="changeMonth(-1)"
-          >
-            <component :is="icons.actions.previous" aria-hidden="true" class="size-4" />
-          </button>
-          <strong class="text-sm capitalize">{{ monthLabel }}</strong>
-          <button
-            type="button"
-            aria-label="Mes siguiente"
-            class="grid size-9 place-items-center rounded-lg transition hover:bg-[#f7f1ec]"
-            @click="changeMonth(1)"
-          >
-            <component :is="icons.actions.next" aria-hidden="true" class="size-4" />
-          </button>
-        </header>
+          <header class="mb-4 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              aria-label="Mes anterior"
+              class="grid size-9 place-items-center rounded-lg transition hover:bg-[#f7f1ec]"
+              @click="changeMonth(-1)"
+            >
+              <component :is="icons.actions.previous" aria-hidden="true" class="size-4" />
+            </button>
+            <div class="flex items-center gap-2">
+              <strong v-if="!yearSelect" class="text-sm capitalize">
+                {{ monthLabel }}
+              </strong>
 
-        <div class="mb-1 grid grid-cols-7 text-center text-[0.68rem] font-bold uppercase text-[#573e33]/45">
-          <span v-for="weekday in ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']" :key="weekday">
-            {{ weekday }}
-          </span>
-        </div>
+              <template v-else>
+                <span class="text-sm font-bold capitalize">
+                  {{
+                    new Intl.DateTimeFormat("es-ES", {
+                      month: "long",
+                    }).format(visibleMonth)
+                  }}
+                </span>
 
-        <div class="grid grid-cols-7 gap-1">
-          <button
-            v-for="day in calendarDays"
-            :key="day.value"
-            type="button"
-            :disabled="day.isDisabled"
-            class="relative grid aspect-square place-items-center rounded-lg text-xs transition"
-            :class="[
-              day.isSelected
-                ? 'bg-[#573e33] font-bold text-white shadow-sm'
-                : 'hover:bg-[#f7f1ec]',
-              !day.isCurrentMonth && !day.isSelected ? 'text-[#573e33]/30' : '',
-              day.isToday && !day.isSelected ? 'font-extrabold text-[#c98274]' : '',
-              day.isDisabled ? 'cursor-not-allowed opacity-25 hover:bg-transparent' : '',
-            ]"
-            @click="selectDate(day)"
-          >
-            {{ day.day }}
-            <span
-              v-if="day.isToday && !day.isSelected"
-              class="absolute bottom-1 size-1 rounded-full bg-[#c98274]"
-            />
-          </button>
-        </div>
+                <select
+                  :value="visibleMonth.getFullYear()"
+                  class="rounded-lg border border-[#b98a81]/30 bg-white px-2 py-1 text-sm font-bold text-[#573e33] outline-none focus:border-[#573e33]"
+                  aria-label="Seleccionar año"
+                  @change="changeYear"
+                >
+                  <option v-for="year in years" :key="year" :value="year">
+                    {{ year }}
+                  </option>
+                </select>
+              </template>
+            </div>
+            <button
+              type="button"
+              aria-label="Mes siguiente"
+              class="grid size-9 place-items-center rounded-lg transition hover:bg-[#f7f1ec]"
+              @click="changeMonth(1)"
+            >
+              <component :is="icons.actions.next" aria-hidden="true" class="size-4" />
+            </button>
+          </header>
 
-        <footer class="mt-3 border-t border-[#b98a81]/15 pt-3 text-center">
-          <button
-            type="button"
-            class="rounded-lg px-4 py-2 text-xs font-bold text-[#a46f62] transition hover:bg-[#f7f1ec]"
-            @click="selectToday"
+          <div
+            class="mb-1 grid grid-cols-7 text-center text-[0.68rem] font-bold uppercase text-[#573e33]/45"
           >
-            Ir a hoy
-          </button>
-        </footer>
+            <span v-for="weekday in ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']" :key="weekday">
+              {{ weekday }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-7 gap-1">
+            <button
+              v-for="day in calendarDays"
+              :key="day.value"
+              type="button"
+              :disabled="day.isDisabled"
+              class="relative grid aspect-square place-items-center rounded-lg text-xs transition"
+              :class="[
+                day.isSelected
+                  ? 'bg-[#573e33] font-bold text-white shadow-sm'
+                  : 'hover:bg-[#f7f1ec]',
+                !day.isCurrentMonth && !day.isSelected ? 'text-[#573e33]/30' : '',
+                day.isToday && !day.isSelected ? 'font-extrabold text-[#c98274]' : '',
+                day.isDisabled ? 'cursor-not-allowed opacity-25 hover:bg-transparent' : '',
+              ]"
+              @click="selectDate(day)"
+            >
+              {{ day.day }}
+              <span
+                v-if="day.isToday && !day.isSelected"
+                class="absolute bottom-1 size-1 rounded-full bg-[#c98274]"
+              />
+            </button>
+          </div>
+
+          <footer class="mt-3 border-t border-[#b98a81]/15 pt-3 text-center">
+            <button
+              type="button"
+              class="rounded-lg px-4 py-2 text-xs font-bold text-[#a46f62] transition hover:bg-[#f7f1ec]"
+              @click="selectToday"
+            >
+              Ir a hoy
+            </button>
+          </footer>
         </section>
       </Teleport>
     </div>

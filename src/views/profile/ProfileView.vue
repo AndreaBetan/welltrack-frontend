@@ -66,11 +66,7 @@ const copyUserToForm = () => {
   });
 };
 
-watch(
-  () => authStore.user,
-  copyUserToForm,
-  { immediate: true },
-);
+watch(() => authStore.user, copyUserToForm, { immediate: true });
 
 const genderLabels = {
   female: "Mujer",
@@ -121,7 +117,9 @@ const handleSubmit = async () => {
       <div class="mb-4 flex items-center justify-between gap-4">
         <div>
           <h2 class="text-xl font-extrabold">Datos personales</h2>
-          <p class="mt-1 text-sm text-[#573e33]/55">Información utilizada para personalizar tu experiencia.</p>
+          <p class="mt-1 text-sm text-[#573e33]/55">
+            Información utilizada para personalizar tu experiencia.
+          </p>
         </div>
         <button
           v-if="!isEditingProfile"
@@ -134,34 +132,51 @@ const handleSubmit = async () => {
         </button>
       </div>
 
-      <dl v-if="!isEditingProfile" class="grid grid-cols-3 gap-x-8 gap-y-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
+      <dl
+        v-if="!isEditingProfile"
+        class="grid grid-cols-3 gap-x-8 gap-y-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1"
+      >
         <div>
           <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Nombre</dt>
           <dd class="mt-1 font-semibold">{{ form.name || "No indicado" }}</dd>
         </div>
         <div>
-          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Correo electrónico</dt>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">
+            Correo electrónico
+          </dt>
           <dd class="mt-1 truncate font-semibold">{{ form.email || "No indicado" }}</dd>
         </div>
         <div>
           <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Género</dt>
-          <dd class="mt-1 font-semibold">{{ genderLabels[form.gender] || "Prefiero no indicarlo" }}</dd>
+          <dd class="mt-1 font-semibold">
+            {{ genderLabels[form.gender] || "Prefiero no indicarlo" }}
+          </dd>
         </div>
         <div>
-          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Fecha de nacimiento</dt>
+          <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">
+            Fecha de nacimiento
+          </dt>
           <dd class="mt-1 font-semibold">{{ form.birth_date || "No indicada" }}</dd>
         </div>
         <div>
           <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Altura</dt>
-          <dd class="mt-1 font-semibold">{{ form.height ? `${form.height} cm` : "No indicada" }}</dd>
+          <dd class="mt-1 font-semibold">
+            {{ form.height ? `${form.height} cm` : "No indicada" }}
+          </dd>
         </div>
         <div>
           <dt class="text-xs font-bold uppercase tracking-wide text-[#573e33]/45">Peso</dt>
-          <dd class="mt-1 font-semibold">{{ form.weight ? `${form.weight} kg` : "No indicado" }}</dd>
+          <dd class="mt-1 font-semibold">
+            {{ form.weight ? `${form.weight} kg` : "No indicado" }}
+          </dd>
         </div>
       </dl>
 
-      <form v-else class="grid grid-cols-2 gap-5 max-[680px]:grid-cols-1" @submit.prevent="handleSubmit">
+      <form
+        v-else
+        class="grid grid-cols-2 gap-5 max-[680px]:grid-cols-1"
+        @submit.prevent="handleSubmit"
+      >
         <FormField
           id="profile-name"
           v-model="form.name"
@@ -176,16 +191,12 @@ const handleSubmit = async () => {
           type="email"
           disabled
         />
-        <Select
-          id="profile-gender"
-          v-model="form.gender"
-          label="Género"
-          :options="genderOptions"
-        />
+        <Select id="profile-gender" v-model="form.gender" label="Género" :options="genderOptions" />
         <DatePicker
           id="profile-birth-date"
           v-model="form.birth_date"
           label="Fecha de nacimiento"
+          year-select
           clearable
         />
         <FormField
